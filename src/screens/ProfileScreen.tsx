@@ -12,11 +12,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { spacing, fontSize, fontWeight, borderRadius } from '../theme/spacing';
 import { Card } from '../components/common';
-import { RootStackParamList, Badge } from '../types';
+import { RootStackParamList } from '../types';
 import { useSettings } from '../context/SettingsContext';
 import { getTotalWorkoutCount, getTotalLifetimeVolume } from '../services/workoutService';
 import { getLifetimeRunStats } from '../services/runService';
-import { getAll } from '../database/database';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -28,7 +27,6 @@ const ProfileScreen: React.FC = () => {
   const [totalVolume, setTotalVolume] = useState(0);
   const [totalRuns, setTotalRuns] = useState(0);
   const [totalDistance, setTotalDistance] = useState(0);
-  const [earnedBadges, setEarnedBadges] = useState<Badge[]>([]);
 
   const loadData = async () => {
     try {
@@ -41,12 +39,6 @@ const ProfileScreen: React.FC = () => {
       const runStats = await getLifetimeRunStats();
       setTotalRuns(runStats.totalRuns);
       setTotalDistance(runStats.totalDistance);
-
-      // Load earned badges
-      const badges = await getAll<Badge>(
-        'SELECT * FROM badges WHERE isEarned = 1 ORDER BY earnedDate DESC'
-      );
-      setEarnedBadges(badges);
     } catch (error) {
       console.error('Failed to load profile data:', error);
     }
@@ -115,45 +107,6 @@ const ProfileScreen: React.FC = () => {
           </View>
         </View>
       </Card>
-
-      {/* Badges Section */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Badges Earned</Text>
-
-        {earnedBadges.length === 0 ? (
-          <Card variant="outlined" style={styles.emptyCard}>
-            <Ionicons name="trophy-outline" size={48} color={colors.textDisabled} />
-            <Text style={styles.emptyText}>No badges yet</Text>
-            <Text style={styles.emptySubtext}>
-              Keep training to earn achievements!
-            </Text>
-          </Card>
-        ) : (
-          <View style={styles.badgesGrid}>
-            {earnedBadges.slice(0, 6).map((badge) => (
-              <Card key={badge.id} variant="outlined" style={styles.badgeCard}>
-                <Ionicons
-                  name="trophy"
-                  size={32}
-                  color={colors.liftPR}
-                />
-                <Text style={styles.badgeName} numberOfLines={2}>
-                  {badge.name}
-                </Text>
-              </Card>
-            ))}
-          </View>
-        )}
-
-        {earnedBadges.length > 6 && (
-          <TouchableOpacity style={styles.viewAllButton}>
-            <Text style={styles.viewAllText}>
-              View All ({earnedBadges.length} badges)
-            </Text>
-            <Ionicons name="chevron-forward" size={16} color={colors.primary} />
-          </TouchableOpacity>
-        )}
-      </View>
 
       {/* Menu Items */}
       <View style={styles.section}>
@@ -266,6 +219,47 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     textAlign: 'center',
     marginTop: spacing.xs,
+    fontWeight: fontWeight.medium,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  badgeCount: {
+    fontSize: fontSize.md,
+    color: colors.primary,
+    fontWeight: fontWeight.bold,
+  },
+  subsectionTitle: {
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.semibold,
+    color: colors.textPrimary,
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  lockedSection: {
+    marginTop: spacing.md,
+  },
+  lockedBadge: {
+    opacity: 0.6,
+  },
+  lockedBadgeName: {
+    color: colors.textSecondary,
+  },
+  badgeDescription: {
+    fontSize: fontSize.xs,
+    color: colors.textDisabled,
+    textAlign: 'center',
+    marginTop: spacing.xs,
+  },
+  moreBadgesText: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: spacing.md,
+    fontStyle: 'italic',
   },
   viewAllButton: {
     flexDirection: 'row',
