@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   workoutButton: {
-    backgroundColor: colors.accent,
+    backgroundColor: colors.primary,
   },
   runButton: {
     backgroundColor: colors.primary,
