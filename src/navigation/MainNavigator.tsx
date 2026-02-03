@@ -63,6 +63,7 @@ const TabNavigator = () => {
           borderTopColor: colors.border,
           paddingBottom: 5,
           paddingTop: 5,
+          paddingHorizontal: 12,
           height: 60,
         },
         tabBarLabelStyle: {
@@ -82,7 +83,7 @@ const TabNavigator = () => {
         name="Home"
         component={HomeScreen}
         options={{
-          title: 'Dashboard',
+          title: 'Home',
           headerTitle: 'Big Fella Athleticcs',
         }}
       />
