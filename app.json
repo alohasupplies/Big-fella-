@@ -1,0 +1,44 @@
+{
+  "expo": {
+    "name": "Big Fella Athletics",
+    "slug": "big-fella-athletics",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FF6B35"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.bigfellaathletics.app",
+      "infoPlist": {
+        "NSHealthShareUsageDescription": "Big Fella Athletics uses HealthKit to sync your workout and run data.",
+        "NSHealthUpdateUsageDescription": "Big Fella Athletics uses HealthKit to save your workout data."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FF6B35"
+      },
+      "package": "com.bigfellaathletics.app",
+      "permissions": [
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.SCHEDULE_EXACT_ALARM"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#FF6B35"
+        }
+      ]
+    ]
+  }
+}
