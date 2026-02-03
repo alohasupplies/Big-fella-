@@ -12,7 +12,7 @@ import { colors } from '../theme/colors';
 import { spacing, fontSize, fontWeight, borderRadius, touchTarget } from '../theme/spacing';
 import { Input } from '../components/common';
 import { RootStackParamList, ExerciseLibraryItem, MuscleGroup, Equipment } from '../types';
-import { getAll } from '../database/database';
+import { getAll, getFavoriteExercises, addFavoriteExercise, removeFavoriteExercise, isFavoriteExercise } from '../database/database';
 
 type RouteProps = RouteProp<RootStackParamList, 'ExerciseSearch'>;
 
@@ -38,9 +38,12 @@ const ExerciseSearchScreen: React.FC = () => {
   const [exercises, setExercises] = useState<ExerciseLibraryItem[]>([]);
   const [filteredExercises, setFilteredExercises] = useState<ExerciseLibraryItem[]>([]);
   const [selectedMuscle, setSelectedMuscle] = useState<MuscleGroup | null>(null);
+  const [favorites, setFavorites] = useState<ExerciseLibraryItem[]>([]);
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadExercises();
+    loadFavorites();
   }, []);
 
   useEffect(() => {
@@ -66,6 +69,42 @@ const ExerciseSearchScreen: React.FC = () => {
       setFilteredExercises(mapped);
     } catch (error) {
       console.error('Failed to load exercises:', error);
+    }
+  };
+
+  const loadFavorites = async () => {
+    try {
+      const rows = await getFavoriteExercises();
+      const mapped: ExerciseLibraryItem[] = rows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        alternativeNames: row.alternativeNames?.split(','),
+        primaryMuscleGroup: row.primaryMuscleGroup as MuscleGroup,
+        secondaryMuscleGroups: row.secondaryMuscleGroups?.split(',') as MuscleGroup[],
+        equipment: row.equipment as Equipment,
+        category: row.category,
+        tags: row.tags?.split(','),
+        videoUrl: row.videoUrl,
+        isCustom: row.isCustom === 1,
+      }));
+      setFavorites(mapped);
+      setFavoriteIds(new Set(mapped.map(e => e.id)));
+    } catch (error) {
+      console.error('Failed to load favorites:', error);
+    }
+  };
+
+  const toggleFavorite = async (exerciseId: string) => {
+    try {
+      const isFav = favoriteIds.has(exerciseId);
+      if (isFav) {
+        await removeFavoriteExercise(exerciseId);
+      } else {
+        await addFavoriteExercise(exerciseId);
+      }
+      await loadFavorites();
+    } catch (error) {
+      console.error('Failed to toggle favorite:', error);
     }
   };
 
@@ -123,29 +162,47 @@ const ExerciseSearchScreen: React.FC = () => {
     }
   };
 
-  const renderExercise = ({ item }: { item: ExerciseLibraryItem }) => (
-    <TouchableOpacity style={styles.exerciseItem} onPress={() => handleSelect(item)}>
-      <View style={styles.exerciseIcon}>
-        <Ionicons
-          name={getEquipmentIcon(item.equipment) as any}
-          size={24}
-          color={colors.primary}
-        />
-      </View>
-      <View style={styles.exerciseInfo}>
-        <Text style={styles.exerciseName}>{item.name}</Text>
-        <Text style={styles.exerciseMuscle}>
-          {getMuscleGroupLabel(item.primaryMuscleGroup)}
-          {item.secondaryMuscleGroups && item.secondaryMuscleGroups.length > 0 && (
-            <Text style={styles.secondaryMuscles}>
-              {' '}+ {item.secondaryMuscleGroups.slice(0, 2).map(getMuscleGroupLabel).join(', ')}
+  const renderExercise = ({ item }: { item: ExerciseLibraryItem }) => {
+    const isFav = favoriteIds.has(item.id);
+    return (
+      <View style={styles.exerciseItem}>
+        <TouchableOpacity 
+          style={styles.exerciseContent} 
+          onPress={() => handleSelect(item)}
+        >
+          <View style={styles.exerciseIcon}>
+            <Ionicons
+              name={getEquipmentIcon(item.equipment) as any}
+              size={24}
+              color={colors.primary}
+            />
+          </View>
+          <View style={styles.exerciseInfo}>
+            <Text style={styles.exerciseName}>{item.name}</Text>
+            <Text style={styles.exerciseMuscle}>
+              {getMuscleGroupLabel(item.primaryMuscleGroup)}
+              {item.secondaryMuscleGroups && item.secondaryMuscleGroups.length > 0 && (
+                <Text style={styles.secondaryMuscles}>
+                  {' '}+ {item.secondaryMuscleGroups.slice(0, 2).map(getMuscleGroupLabel).join(', ')}
+                </Text>
+              )}
             </Text>
-          )}
-        </Text>
+          </View>
+          <Ionicons name="add-circle" size={28} color={colors.primary} />
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.favoriteButton}
+          onPress={() => toggleFavorite(item.id)}
+        >
+          <Ionicons 
+            name={isFav ? "star" : "star-outline"} 
+            size={24} 
+            color={isFav ? colors.primary : colors.textSecondary} 
+          />
+        </TouchableOpacity>
       </View>
-      <Ionicons name="add-circle" size={28} color={colors.primary} />
-    </TouchableOpacity>
-  );
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -190,6 +247,19 @@ const ExerciseSearchScreen: React.FC = () => {
           )}
         />
       </View>
+
+      {/* Favorites Section */}
+      {favorites.length > 0 && !searchQuery && !selectedMuscle && (
+        <View style={styles.favoritesSection}>
+          <Text style={styles.sectionTitle}>⭐ Favorites</Text>
+          {favorites.map((item) => (
+            <View key={item.id}>
+              {renderExercise({ item })}
+              <View style={styles.separator} />
+            </View>
+          ))}
+        </View>
+      )}
 
       {/* Results Count */}
       <Text style={styles.resultsCount}>
@@ -266,11 +336,30 @@ const styles = StyleSheet.create({
   list: {
     paddingHorizontal: spacing.md,
   },
+  favoritesSection: {
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.md,
+  },
+  sectionTitle: {
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.bold,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+  },
   exerciseItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: spacing.md,
     minHeight: touchTarget.min,
+  },
+  exerciseContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  favoriteButton: {
+    padding: spacing.sm,
+    marginLeft: spacing.sm,
   },
   exerciseIcon: {
     width: 44,

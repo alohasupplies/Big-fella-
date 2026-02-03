@@ -134,6 +134,12 @@ export const initDatabase = async (): Promise<void> => {
       setId TEXT,
       FOREIGN KEY (workoutId) REFERENCES workouts(id) ON DELETE SET NULL
     )`,
+    `CREATE TABLE IF NOT EXISTS favorite_exercises (
+      id TEXT PRIMARY KEY,
+      exerciseLibraryId TEXT NOT NULL,
+      createdAt TEXT NOT NULL,
+      FOREIGN KEY (exerciseLibraryId) REFERENCES exercise_library(id) ON DELETE CASCADE
+    )`,
     `CREATE TABLE IF NOT EXISTS challenges (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -276,4 +282,53 @@ export const getFirst = async <T>(sql: string, params: any[] = []): Promise<T | 
   const database = getDatabase();
   const result = await executeSql(database, sql, params);
   return result.rows.length > 0 ? result.rows.item(0) : null;
+};
+
+// Favorite Exercises Functions
+export const addFavoriteExercise = async (exerciseLibraryId: string): Promise<void> => {
+  const database = getDatabase();
+  const { v4: uuidv4 } = require('uuid');
+  const id = uuidv4();
+  const createdAt = new Date().toISOString();
+  
+  await executeSql(
+    database,
+    `INSERT INTO favorite_exercises (id, exerciseLibraryId, createdAt) VALUES (?, ?, ?)`,
+    [id, exerciseLibraryId, createdAt]
+  );
+};
+
+export const removeFavoriteExercise = async (exerciseLibraryId: string): Promise<void> => {
+  const database = getDatabase();
+  await executeSql(
+    database,
+    `DELETE FROM favorite_exercises WHERE exerciseLibraryId = ?`,
+    [exerciseLibraryId]
+  );
+};
+
+export const isFavoriteExercise = async (exerciseLibraryId: string): Promise<boolean> => {
+  const database = getDatabase();
+  const result = await executeSql(
+    database,
+    `SELECT COUNT(*) as count FROM favorite_exercises WHERE exerciseLibraryId = ?`,
+    [exerciseLibraryId]
+  );
+  return result.rows.item(0).count > 0;
+};
+
+export const getFavoriteExercises = async (): Promise<any[]> => {
+  const database = getDatabase();
+  const result = await executeSql(
+    database,
+    `SELECT el.* FROM exercise_library el
+     INNER JOIN favorite_exercises fe ON el.id = fe.exerciseLibraryId
+     ORDER BY fe.createdAt DESC`,
+    []
+  );
+  const items: any[] = [];
+  for (let i = 0; i < result.rows.length; i++) {
+    items.push(result.rows.item(i));
+  }
+  return items;
 };

@@ -3,7 +3,12 @@ import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { ActivityIndicator, View, StyleSheet, Text, Platform } from 'react-native';
+import { ActivityIndicator, View, StyleSheet, Text, Platform, LogBox } from 'react-native';
+
+// Hide all dev mode indicators
+if (__DEV__) {
+  LogBox.ignoreAllLogs(true);
+}
 
 import { initDatabase } from './src/database/database';
 import { SettingsProvider } from './src/context/SettingsContext';
