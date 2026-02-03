@@ -83,7 +83,7 @@ const TabNavigator = () => {
         component={HomeScreen}
         options={{
           title: 'Dashboard',
-          headerTitle: 'Big Fella Athletics',
+          headerTitle: 'Big Fella Athleticcs',
         }}
       />
       <Tab.Screen

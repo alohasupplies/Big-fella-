@@ -283,11 +283,13 @@ const styles = StyleSheet.create({
   },
   timeInput: {
     marginBottom: 0,
+    width: '100%',
   },
   timeLabel: {
     fontSize: fontSize.xs,
     color: colors.textSecondary,
     marginTop: spacing.xs,
+    textAlign: 'center',
   },
   paceCard: {
     alignItems: 'center',
