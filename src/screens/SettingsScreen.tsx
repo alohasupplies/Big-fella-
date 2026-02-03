@@ -254,7 +254,7 @@ const SettingsScreen: React.FC = () => {
         <View style={styles.infoRow}>
           <Ionicons name="information-circle" size={24} color={colors.accent} />
           <View style={styles.infoContent}>
-            <Text style={styles.infoTitle}>Big Fella Athletics</Text>
+            <Text style={styles.infoTitle}>Athleticcs | Forge</Text>
             <Text style={styles.infoDescription}>
               Version 1.0.0{'\n'}
               Built with React Native + Expo{'\n'}
