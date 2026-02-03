@@ -134,7 +134,7 @@ const ProfileScreen: React.FC = () => {
 
       {/* App Info */}
       <View style={styles.appInfo}>
-        <Text style={styles.appName}>Big Fella Athletics</Text>
+        <Text style={styles.appName}>Big Fella Athleticcs</Text>
         <Text style={styles.appVersion}>Version 1.0.0</Text>
         <Text style={styles.appTagline}>
           Your data stays on your device. Always.
