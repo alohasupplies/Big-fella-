@@ -298,12 +298,12 @@ const styles = StyleSheet.create({
   },
   paceLabel: {
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: colors.white,
   },
   paceValue: {
     fontSize: fontSize.xxl,
     fontWeight: fontWeight.bold,
-    color: colors.primary,
+    color: colors.white,
     marginTop: spacing.xs,
   },
   runTypeGrid: {

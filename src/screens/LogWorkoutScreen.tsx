@@ -452,12 +452,12 @@ const styles = StyleSheet.create({
   },
   timerLabel: {
     fontSize: fontSize.sm,
-    color: colors.textSecondary,
+    color: colors.white,
   },
   timerValue: {
     fontSize: fontSize.hero,
     fontWeight: fontWeight.bold,
-    color: colors.primary,
+    color: colors.white,
     marginVertical: spacing.sm,
   },
   timerButtons: {
@@ -469,7 +469,7 @@ const styles = StyleSheet.create({
   },
   timerButtonText: {
     fontSize: fontSize.sm,
-    color: colors.primary,
+    color: colors.white,
     fontWeight: fontWeight.medium,
   },
   addExerciseButton: {
