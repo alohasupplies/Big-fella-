@@ -1,17 +1,17 @@
 // Big Fella Athletics Color Scheme
-// Primary: Bold athletic orange - energetic and motivating
-// Accent: Strong blue - contrasting for CTAs and highlights
+// Black background with white text and red (#AA0100) accents
+// Inspired by the Athletics logo with laurel wreath
 
 export const colors = {
-  // Primary colors
-  primary: '#FF6B35',
-  primaryDark: '#E55A2B',
-  primaryLight: '#FF8F66',
+  // Primary colors - Red from logo
+  primary: '#AA0100',
+  primaryDark: '#880100',
+  primaryLight: '#CC0100',
 
-  // Accent colors
-  accent: '#2196F3',
-  accentDark: '#1976D2',
-  accentLight: '#64B5F6',
+  // Accent colors - White for contrast
+  accent: '#FFFFFF',
+  accentDark: '#E0E0E0',
+  accentLight: '#FFFFFF',
 
   // Status colors
   success: '#4CAF50',
@@ -19,44 +19,44 @@ export const colors = {
   successLight: '#81C784',
   warning: '#FFC107',
   warningDark: '#FFA000',
-  error: '#F44336',
-  errorDark: '#D32F2F',
+  error: '#AA0100',
+  errorDark: '#880100',
 
-  // Neutral colors
-  background: '#FAFAFA',
-  backgroundDark: '#121212',
-  surface: '#FFFFFF',
-  surfaceDark: '#1E1E1E',
+  // Neutral colors - Black background
+  background: '#000000',
+  backgroundDark: '#000000',
+  surface: '#1A1A1A',
+  surfaceDark: '#0A0A0A',
 
-  // Text colors
-  textPrimary: '#212121',
+  // Text colors - White on black
+  textPrimary: '#FFFFFF',
   textPrimaryDark: '#FFFFFF',
-  textSecondary: '#757575',
-  textSecondaryDark: '#B0B0B0',
-  textDisabled: '#9E9E9E',
+  textSecondary: '#B0B0B0',
+  textSecondaryDark: '#808080',
+  textDisabled: '#666666',
 
   // Border colors
-  border: '#E0E0E0',
-  borderDark: '#333333',
+  border: '#333333',
+  borderDark: '#1A1A1A',
 
-  // Streak colors (for calendar heatmap)
-  streakNone: '#EEEEEE',
-  streakLight: '#FFE0B2',
-  streakMedium: '#FFCC80',
-  streakStrong: '#FF9800',
-  streakIntense: '#F57C00',
+  // Streak colors (for calendar heatmap) - Red gradient
+  streakNone: '#1A1A1A',
+  streakLight: '#4D0100',
+  streakMedium: '#770100',
+  streakStrong: '#AA0100',
+  streakIntense: '#DD0100',
 
   // Lift progress colors
   liftPR: '#FFD700',
   liftProgress: '#4CAF50',
-  liftMaintain: '#2196F3',
-  liftRegress: '#F44336',
+  liftMaintain: '#FFFFFF',
+  liftRegress: '#AA0100',
 
   // Misc
   white: '#FFFFFF',
   black: '#000000',
   transparent: 'transparent',
-  overlay: 'rgba(0, 0, 0, 0.5)',
+  overlay: 'rgba(0, 0, 0, 0.7)',
 };
 
 export const darkColors = {
@@ -66,7 +66,7 @@ export const darkColors = {
   textPrimary: colors.textPrimaryDark,
   textSecondary: colors.textSecondaryDark,
   border: colors.borderDark,
-  streakNone: '#333333',
+  streakNone: '#1A1A1A',
 };
 
 export type ColorScheme = typeof colors;
