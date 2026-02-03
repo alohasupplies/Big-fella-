@@ -70,25 +70,33 @@ const LogWorkoutScreen: React.FC = () => {
     return () => clearInterval(interval);
   }, [isTimerRunning, restTimer]);
 
-  const addExercise = (exercise: ExerciseLibraryItem) => {
-    const newExercise: WorkoutExercise = {
-      id: uuidv4(),
-      exerciseLibraryId: exercise.id,
-      exerciseName: exercise.name,
-      muscleGroups: [exercise.primaryMuscleGroup, ...(exercise.secondaryMuscleGroups || [])],
-      sets: [
-        {
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      if (route.params?.selectedExercise) {
+        const exercise = route.params.selectedExercise;
+        const newExercise: WorkoutExercise = {
           id: uuidv4(),
-          weight: '',
-          reps: '',
-          rpe: '',
-          isWarmup: false,
-          completed: false,
-        },
-      ],
-    };
-    setExercises([...exercises, newExercise]);
-  };
+          exerciseLibraryId: exercise.id,
+          exerciseName: exercise.name,
+          muscleGroups: [exercise.primaryMuscleGroup, ...(exercise.secondaryMuscleGroups || [])],
+          sets: [
+            {
+              id: uuidv4(),
+              weight: '',
+              reps: '',
+              rpe: '',
+              isWarmup: false,
+              completed: false,
+            },
+          ],
+        };
+        setExercises([...exercises, newExercise]);
+        // Clear the param after using it
+        navigation.setParams({ selectedExercise: undefined } as any);
+      }
+    });
+    return unsubscribe;
+  }, [navigation, route.params?.selectedExercise]);
 
   const removeExercise = (exerciseId: string) => {
     Alert.alert(
@@ -290,11 +298,7 @@ const LogWorkoutScreen: React.FC = () => {
         {/* Add Exercise Button */}
         <Button
           title="Add Exercise"
-          onPress={() =>
-            navigation.navigate('ExerciseSearch', {
-              onSelect: addExercise,
-            })
-          }
+          onPress={() => navigation.navigate('ExerciseSearch', {})}
           variant="outline"
           icon={<Ionicons name="add" size={20} color={colors.primary} />}
           style={styles.addExerciseButton}

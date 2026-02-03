@@ -33,7 +33,6 @@ const MUSCLE_GROUPS: { value: MuscleGroup; label: string }[] = [
 const ExerciseSearchScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute<RouteProps>();
-  const { onSelect } = route.params;
 
   const [searchQuery, setSearchQuery] = useState('');
   const [exercises, setExercises] = useState<ExerciseLibraryItem[]>([]);
@@ -97,8 +96,7 @@ const ExerciseSearchScreen: React.FC = () => {
   };
 
   const handleSelect = (exercise: ExerciseLibraryItem) => {
-    onSelect(exercise);
-    navigation.goBack();
+    navigation.navigate('LogWorkout', { selectedExercise: exercise } as any);
   };
 
   const getMuscleGroupLabel = (muscleGroup: string): string => {

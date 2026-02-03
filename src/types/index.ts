@@ -240,12 +240,12 @@ export type ProgressionAction =
 // Navigation Types
 export type RootStackParamList = {
   Main: undefined;
-  LogWorkout: { workoutId?: string };
+  LogWorkout: { workoutId?: string; selectedExercise?: ExerciseLibraryItem };
   LogRun: { runId?: string };
   ExerciseDetail: { exerciseLibraryId: string };
   WorkoutDetail: { workoutId: string };
   RunDetail: { runId: string };
-  ExerciseSearch: { onSelect: (exercise: ExerciseLibraryItem) => void };
+  ExerciseSearch: {};
   ChallengeDetail: { challengeId: string };
   CreateChallenge: undefined;
   Settings: undefined;
