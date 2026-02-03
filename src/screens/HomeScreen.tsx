@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
+  Image,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -115,6 +116,15 @@ const HomeScreen: React.FC = () => {
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
     >
+      {/* Logo */}
+      <View style={styles.logoContainer}>
+        <Image
+          source={require('../../assets/logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+      </View>
+
       {/* Quick Actions */}
       <View style={styles.quickActions}>
         <TouchableOpacity
@@ -250,6 +260,15 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: spacing.md,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+    marginTop: spacing.md,
+  },
+  logo: {
+    width: 200,
+    height: 120,
   },
   quickActions: {
     flexDirection: 'row',
