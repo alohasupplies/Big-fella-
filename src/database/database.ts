@@ -1,27 +1,57 @@
 import * as SQLite from 'expo-sqlite';
 
-let db: SQLite.SQLiteDatabase | null = null;
+let db: SQLite.WebSQLDatabase | null = null;
 
-export const getDatabase = (): SQLite.SQLiteDatabase => {
+export const getDatabase = (): SQLite.WebSQLDatabase => {
   if (!db) {
-    db = SQLite.openDatabaseSync('bigfella.db');
+    db = SQLite.openDatabase('bigfella.db');
   }
   return db;
+};
+
+const executeSqlBatch = (database: SQLite.WebSQLDatabase, sqlStatements: string[]): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    database.transaction(
+      tx => {
+        sqlStatements.forEach(sql => {
+          tx.executeSql(sql);
+        });
+      },
+      error => reject(error),
+      () => resolve()
+    );
+  });
+};
+
+const executeSql = (database: SQLite.WebSQLDatabase, sql: string, params: any[] = []): Promise<any> => {
+  return new Promise((resolve, reject) => {
+    database.transaction(
+      tx => {
+        tx.executeSql(
+          sql,
+          params,
+          (_, result) => resolve(result),
+          (_, error) => {
+            reject(error);
+            return false;
+          }
+        );
+      },
+      error => reject(error)
+    );
+  });
 };
 
 export const initDatabase = async (): Promise<void> => {
   const database = getDatabase();
 
-  // Create tables
-  await database.execAsync(`
-    -- User Settings table
-    CREATE TABLE IF NOT EXISTS settings (
+  // Create tables - split into individual statements
+  const createTableStatements = [
+    `CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
-    );
-
-    -- Exercise Library table
-    CREATE TABLE IF NOT EXISTS exercise_library (
+    )`,
+    `CREATE TABLE IF NOT EXISTS exercise_library (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       alternativeNames TEXT,
@@ -32,10 +62,8 @@ export const initDatabase = async (): Promise<void> => {
       tags TEXT,
       videoUrl TEXT,
       isCustom INTEGER DEFAULT 0
-    );
-
-    -- Workouts table
-    CREATE TABLE IF NOT EXISTS workouts (
+    )`,
+    `CREATE TABLE IF NOT EXISTS workouts (
       id TEXT PRIMARY KEY,
       date TEXT NOT NULL,
       duration INTEGER,
@@ -43,10 +71,8 @@ export const initDatabase = async (): Promise<void> => {
       tags TEXT,
       createdAt TEXT NOT NULL,
       updatedAt TEXT NOT NULL
-    );
-
-    -- Exercises (workout entries) table
-    CREATE TABLE IF NOT EXISTS exercises (
+    )`,
+    `CREATE TABLE IF NOT EXISTS exercises (
       id TEXT PRIMARY KEY,
       workoutId TEXT NOT NULL,
       exerciseLibraryId TEXT NOT NULL,
@@ -55,10 +81,8 @@ export const initDatabase = async (): Promise<void> => {
       orderIndex INTEGER NOT NULL,
       notes TEXT,
       FOREIGN KEY (workoutId) REFERENCES workouts(id) ON DELETE CASCADE
-    );
-
-    -- Sets table
-    CREATE TABLE IF NOT EXISTS sets (
+    )`,
+    `CREATE TABLE IF NOT EXISTS sets (
       id TEXT PRIMARY KEY,
       exerciseId TEXT NOT NULL,
       setNumber INTEGER NOT NULL,
@@ -69,10 +93,8 @@ export const initDatabase = async (): Promise<void> => {
       notes TEXT,
       timestamp TEXT NOT NULL,
       FOREIGN KEY (exerciseId) REFERENCES exercises(id) ON DELETE CASCADE
-    );
-
-    -- Runs table
-    CREATE TABLE IF NOT EXISTS runs (
+    )`,
+    `CREATE TABLE IF NOT EXISTS runs (
       id TEXT PRIMARY KEY,
       date TEXT NOT NULL,
       distance REAL NOT NULL,
@@ -84,29 +106,23 @@ export const initDatabase = async (): Promise<void> => {
       notes TEXT,
       createdAt TEXT NOT NULL,
       updatedAt TEXT NOT NULL
-    );
-
-    -- Streaks table
-    CREATE TABLE IF NOT EXISTS streaks (
+    )`,
+    `CREATE TABLE IF NOT EXISTS streaks (
       id TEXT PRIMARY KEY,
       startDate TEXT NOT NULL,
       endDate TEXT,
       currentLength INTEGER NOT NULL,
       isActive INTEGER NOT NULL,
       freezesUsed INTEGER DEFAULT 0
-    );
-
-    -- Streak Freezes table
-    CREATE TABLE IF NOT EXISTS streak_freezes (
+    )`,
+    `CREATE TABLE IF NOT EXISTS streak_freezes (
       id TEXT PRIMARY KEY,
       streakId TEXT NOT NULL,
       date TEXT NOT NULL,
       reason TEXT,
       FOREIGN KEY (streakId) REFERENCES streaks(id) ON DELETE CASCADE
-    );
-
-    -- Personal Records table
-    CREATE TABLE IF NOT EXISTS personal_records (
+    )`,
+    `CREATE TABLE IF NOT EXISTS personal_records (
       id TEXT PRIMARY KEY,
       exerciseLibraryId TEXT NOT NULL,
       recordType TEXT NOT NULL,
@@ -117,10 +133,8 @@ export const initDatabase = async (): Promise<void> => {
       workoutId TEXT,
       setId TEXT,
       FOREIGN KEY (workoutId) REFERENCES workouts(id) ON DELETE SET NULL
-    );
-
-    -- Challenges table
-    CREATE TABLE IF NOT EXISTS challenges (
+    )`,
+    `CREATE TABLE IF NOT EXISTS challenges (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       description TEXT,
@@ -133,10 +147,8 @@ export const initDatabase = async (): Promise<void> => {
       isCompleted INTEGER DEFAULT 0,
       isActive INTEGER DEFAULT 1,
       createdAt TEXT NOT NULL
-    );
-
-    -- Badges table
-    CREATE TABLE IF NOT EXISTS badges (
+    )`,
+    `CREATE TABLE IF NOT EXISTS badges (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       description TEXT NOT NULL,
@@ -144,15 +156,15 @@ export const initDatabase = async (): Promise<void> => {
       iconName TEXT NOT NULL,
       earnedDate TEXT,
       isEarned INTEGER DEFAULT 0
-    );
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_workouts_date ON workouts(date)`,
+    `CREATE INDEX IF NOT EXISTS idx_exercises_workout ON exercises(workoutId)`,
+    `CREATE INDEX IF NOT EXISTS idx_sets_exercise ON sets(exerciseId)`,
+    `CREATE INDEX IF NOT EXISTS idx_runs_date ON runs(date)`,
+    `CREATE INDEX IF NOT EXISTS idx_personal_records_exercise ON personal_records(exerciseLibraryId)`
+  ];
 
-    -- Create indexes for performance
-    CREATE INDEX IF NOT EXISTS idx_workouts_date ON workouts(date);
-    CREATE INDEX IF NOT EXISTS idx_exercises_workout ON exercises(workoutId);
-    CREATE INDEX IF NOT EXISTS idx_sets_exercise ON sets(exerciseId);
-    CREATE INDEX IF NOT EXISTS idx_runs_date ON runs(date);
-    CREATE INDEX IF NOT EXISTS idx_personal_records_exercise ON personal_records(exerciseLibraryId);
-  `);
+  await executeSqlBatch(database, createTableStatements);
 
   // Initialize default settings if not exists
   await initializeDefaultSettings(database);
@@ -164,7 +176,7 @@ export const initDatabase = async (): Promise<void> => {
   await initializeBadges(database);
 };
 
-const initializeDefaultSettings = async (database: SQLite.SQLiteDatabase) => {
+const initializeDefaultSettings = async (database: SQLite.WebSQLDatabase) => {
   const defaultSettings = [
     { key: 'weightUnit', value: 'lbs' },
     { key: 'distanceUnit', value: 'miles' },
@@ -179,24 +191,29 @@ const initializeDefaultSettings = async (database: SQLite.SQLiteDatabase) => {
   ];
 
   for (const setting of defaultSettings) {
-    await database.runAsync(
+    await executeSql(
+      database,
       'INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)',
       [setting.key, setting.value]
     );
   }
 };
 
-const initializeExerciseLibrary = async (database: SQLite.SQLiteDatabase) => {
-  const result = await database.getFirstAsync<{ count: number }>(
+const initializeExerciseLibrary = async (database: SQLite.WebSQLDatabase) => {
+  const result = await executeSql(
+    database,
     'SELECT COUNT(*) as count FROM exercise_library'
   );
 
-  if (result && result.count === 0) {
+  const count = result.rows.item(0).count;
+
+  if (count === 0) {
     // Import exercises from the exercise data file
-    const { exerciseLibrary } = await import('../data/exerciseLibrary');
+    const { exerciseLibrary } = require('../data/exerciseLibrary');
 
     for (const exercise of exerciseLibrary) {
-      await database.runAsync(
+      await executeSql(
+        database,
         `INSERT INTO exercise_library (id, name, alternativeNames, primaryMuscleGroup,
          secondaryMuscleGroups, equipment, category, tags, videoUrl, isCustom)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -217,16 +234,20 @@ const initializeExerciseLibrary = async (database: SQLite.SQLiteDatabase) => {
   }
 };
 
-const initializeBadges = async (database: SQLite.SQLiteDatabase) => {
-  const result = await database.getFirstAsync<{ count: number }>(
+const initializeBadges = async (database: SQLite.WebSQLDatabase) => {
+  const result = await executeSql(
+    database,
     'SELECT COUNT(*) as count FROM badges'
   );
 
-  if (result && result.count === 0) {
-    const { badges } = await import('../data/badges');
+  const count = result.rows.item(0).count;
+
+  if (count === 0) {
+    const { badges } = require('../data/badges');
 
     for (const badge of badges) {
-      await database.runAsync(
+      await executeSql(
+        database,
         `INSERT INTO badges (id, name, description, category, iconName, isEarned)
          VALUES (?, ?, ?, ?, ?, ?)`,
         [badge.id, badge.name, badge.description, badge.category, badge.iconName, 0]
@@ -238,15 +259,21 @@ const initializeBadges = async (database: SQLite.SQLiteDatabase) => {
 // Generic query helper functions
 export const runQuery = async (sql: string, params: any[] = []) => {
   const database = getDatabase();
-  return database.runAsync(sql, params);
+  return executeSql(database, sql, params);
 };
 
 export const getAll = async <T>(sql: string, params: any[] = []): Promise<T[]> => {
   const database = getDatabase();
-  return database.getAllAsync<T>(sql, params);
+  const result = await executeSql(database, sql, params);
+  const items: T[] = [];
+  for (let i = 0; i < result.rows.length; i++) {
+    items.push(result.rows.item(i));
+  }
+  return items;
 };
 
 export const getFirst = async <T>(sql: string, params: any[] = []): Promise<T | null> => {
   const database = getDatabase();
-  return database.getFirstAsync<T>(sql, params);
+  const result = await executeSql(database, sql, params);
+  return result.rows.length > 0 ? result.rows.item(0) : null;
 };
