@@ -93,19 +93,25 @@ const RunDetailScreen: React.FC = () => {
       <View style={styles.statsGrid}>
         <Card variant="outlined" style={styles.statCard}>
           <Ionicons name="map" size={28} color={colors.primary} />
-          <Text style={styles.statValue}>{run.distance.toFixed(2)}</Text>
+          <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit>
+            {run.distance.toFixed(2)}
+          </Text>
           <Text style={styles.statLabel}>{settings.distanceUnit}</Text>
         </Card>
 
         <Card variant="outlined" style={styles.statCard}>
           <Ionicons name="time" size={28} color={colors.primary} />
-          <Text style={styles.statValue}>{formatDuration(run.duration)}</Text>
+          <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit>
+            {formatDuration(run.duration)}
+          </Text>
           <Text style={styles.statLabel}>Duration</Text>
         </Card>
 
         <Card variant="outlined" style={styles.statCard}>
           <Ionicons name="speedometer" size={28} color={colors.primary} />
-          <Text style={styles.statValue}>{formatPace(run.pace)}</Text>
+          <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit>
+            {formatPace(run.pace)}
+          </Text>
           <Text style={styles.statLabel}>
             /{settings.distanceUnit === 'miles' ? 'mi' : 'km'}
           </Text>

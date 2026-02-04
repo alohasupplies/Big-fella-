@@ -7,16 +7,19 @@ import {
   TouchableOpacity,
   Switch,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { spacing, fontSize, fontWeight, borderRadius } from '../theme/spacing';
 import { Card } from '../components/common';
 import { useSettings } from '../context/SettingsContext';
+import { seedDebugData, clearAllData } from '../utils/debugData';
 
 const SettingsScreen: React.FC = () => {
   const { settings, updateSetting } = useSettings();
   const [saving, setSaving] = useState(false);
+  const [seeding, setSeeding] = useState(false);
 
   const handleUnitChange = async (type: 'weight' | 'distance', value: string) => {
     setSaving(true);
@@ -49,6 +52,59 @@ const SettingsScreen: React.FC = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleSeedDebugData = async () => {
+    Alert.alert(
+      'Seed Debug Data',
+      'This will clear existing data and add test workouts, runs, and PRs. Continue?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Seed Data',
+          style: 'destructive',
+          onPress: async () => {
+            setSeeding(true);
+            try {
+              await seedDebugData();
+              Alert.alert('Success', 'Debug data has been seeded! Pull to refresh on Home screen.');
+            } catch (error: any) {
+              const errorMsg = error?.message || String(error);
+              Alert.alert('Error', `Failed to seed debug data:\n\n${errorMsg}`);
+              console.error('Seed error:', error);
+            } finally {
+              setSeeding(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleClearAllData = async () => {
+    Alert.alert(
+      'Clear All Data',
+      'This will permanently delete all workouts, runs, streaks, and PRs. This cannot be undone!',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear All',
+          style: 'destructive',
+          onPress: async () => {
+            setSeeding(true);
+            try {
+              await clearAllData();
+              Alert.alert('Success', 'All data has been cleared!');
+            } catch (error) {
+              Alert.alert('Error', 'Failed to clear data');
+              console.error(error);
+            } finally {
+              setSeeding(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleStreakMinChange = async (
@@ -249,6 +305,52 @@ const SettingsScreen: React.FC = () => {
         </View>
       </Card>
 
+      {/* Debug Mode (only in __DEV__) */}
+      {__DEV__ && (
+        <>
+          <Text style={styles.sectionTitle}>DEBUG MODE</Text>
+          <Card variant="outlined" style={styles.card}>
+            <TouchableOpacity
+              style={styles.debugButton}
+              onPress={handleSeedDebugData}
+              disabled={seeding}
+            >
+              <View style={styles.debugButtonContent}>
+                <Ionicons name="flask" size={24} color={colors.primary} />
+                <View style={styles.debugButtonText}>
+                  <Text style={styles.settingLabel}>Seed Test Data</Text>
+                  <Text style={styles.settingDescription}>
+                    Add sample workouts, runs, and PRs for testing
+                  </Text>
+                </View>
+              </View>
+              {seeding && <ActivityIndicator color={colors.primary} />}
+            </TouchableOpacity>
+
+            <View style={styles.divider} />
+
+            <TouchableOpacity
+              style={styles.debugButton}
+              onPress={handleClearAllData}
+              disabled={seeding}
+            >
+              <View style={styles.debugButtonContent}>
+                <Ionicons name="trash" size={24} color={colors.error} />
+                <View style={styles.debugButtonText}>
+                  <Text style={[styles.settingLabel, { color: colors.error }]}>
+                    Clear All Data
+                  </Text>
+                  <Text style={styles.settingDescription}>
+                    Delete all workouts, runs, and progress
+                  </Text>
+                </View>
+              </View>
+              {seeding && <ActivityIndicator color={colors.error} />}
+            </TouchableOpacity>
+          </Card>
+        </>
+      )}
+
       {/* App Info */}
       <Card variant="outlined" style={styles.card}>
         <View style={styles.infoRow}>
@@ -351,6 +453,17 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: spacing.xs,
     lineHeight: 20,
+  },
+  debugButton: {
+    paddingVertical: spacing.md,
+  },
+  debugButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  debugButtonText: {
+    flex: 1,
+    marginLeft: spacing.md,
   },
 });
 

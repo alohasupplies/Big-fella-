@@ -23,7 +23,7 @@ const executeSqlBatch = (database: SQLite.WebSQLDatabase, sqlStatements: string[
   });
 };
 
-const executeSql = (database: SQLite.WebSQLDatabase, sql: string, params: any[] = []): Promise<any> => {
+export const executeSql = (database: SQLite.WebSQLDatabase, sql: string, params: any[] = []): Promise<any> => {
   return new Promise((resolve, reject) => {
     database.transaction(
       tx => {
