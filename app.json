@@ -14,11 +14,7 @@
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.bigfellaathletics.app",
-      "infoPlist": {
-        "NSHealthShareUsageDescription": "Big Fella Athletics uses HealthKit to sync your workout and run data.",
-        "NSHealthUpdateUsageDescription": "Big Fella Athletics uses HealthKit to save your workout data."
-      }
+      "bundleIdentifier": "com.bigfellaathletics.app"
     },
     "android": {
       "adaptiveIcon": {
