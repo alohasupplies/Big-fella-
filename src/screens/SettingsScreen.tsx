@@ -19,6 +19,7 @@ import {
   isHealthKitAvailable,
   requestHealthKitPermissions,
   syncRunsFromHealthKit,
+  clearAndResyncFromHealthKit,
   getLastSyncTime,
 } from '../services/healthService';
 
@@ -281,6 +282,49 @@ const SettingsScreen: React.FC = () => {
                     </View>
                   </View>
                   {syncing && <ActivityIndicator color={colors.primary} />}
+                </TouchableOpacity>
+                <View style={styles.divider} />
+                <TouchableOpacity
+                  style={styles.debugButton}
+                  onPress={() => {
+                    Alert.alert(
+                      'Re-sync from Apple Health',
+                      'This will remove all previously imported Health workouts and re-import them. Your manually logged runs will not be affected.',
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Re-sync',
+                          style: 'destructive',
+                          onPress: async () => {
+                            setSyncing(true);
+                            try {
+                              const result = await clearAndResyncFromHealthKit(settings.distanceUnit);
+                              setLastSync(new Date().toISOString());
+                              Alert.alert(
+                                'Re-sync Complete',
+                                `Imported ${result.imported} workout${result.imported !== 1 ? 's' : ''} from Apple Health.`
+                              );
+                            } catch (error) {
+                              Alert.alert('Re-sync Failed', 'Could not re-sync from Apple Health.');
+                            } finally {
+                              setSyncing(false);
+                            }
+                          },
+                        },
+                      ]
+                    );
+                  }}
+                  disabled={syncing}
+                >
+                  <View style={styles.debugButtonContent}>
+                    <Ionicons name="refresh" size={24} color={colors.primary} />
+                    <View style={styles.debugButtonText}>
+                      <Text style={styles.settingLabel}>Re-sync All</Text>
+                      <Text style={styles.settingDescription}>
+                        Clear and re-import all Health workouts
+                      </Text>
+                    </View>
+                  </View>
                 </TouchableOpacity>
               </>
             )}

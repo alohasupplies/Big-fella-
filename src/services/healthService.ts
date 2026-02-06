@@ -219,6 +219,21 @@ export const syncRunsFromHealthKit = async (
   return result;
 };
 
+// Clear all synced health runs and re-import
+export const clearAndResyncFromHealthKit = async (
+  distanceUnit: 'miles' | 'km' = 'miles',
+  daysBack: number = 30
+): Promise<HealthSyncResult> => {
+  // Delete all runs that were synced from Apple Health
+  await runQuery(
+    `DELETE FROM runs WHERE notes = 'Synced from Apple Health'`
+  );
+  // Clear the sync tracking table
+  await runQuery('DELETE FROM synced_health_runs');
+  // Re-import with correct classification
+  return syncRunsFromHealthKit(distanceUnit, daysBack);
+};
+
 // Get last sync timestamp
 export const getLastSyncTime = async (): Promise<string | null> => {
   const result = await getFirst<{ syncedAt: string }>(
