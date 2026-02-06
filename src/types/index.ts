@@ -116,7 +116,7 @@ export interface Run {
   updatedAt: string;
 }
 
-export type RunType = 'easy' | 'tempo' | 'intervals' | 'long' | 'recovery' | 'race';
+export type RunType = 'easy' | 'tempo' | 'intervals' | 'long' | 'recovery' | 'race' | 'walk';
 
 // Streak Types
 export interface Streak {

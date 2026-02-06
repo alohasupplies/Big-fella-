@@ -171,7 +171,9 @@ export const syncRunsFromHealthKit = async (
           ? pace
           : pace * 1.60934; // convert min/km to min/mile for classification
 
-        const runType = classifyRunType(paceMinPerMile, durationSeconds);
+        const runType: RunType = activityType === HKWorkoutActivityType.walking
+          ? 'walk'
+          : classifyRunType(paceMinPerMile, durationSeconds);
         const runDate = startTime.toISOString().split('T')[0];
 
         // Insert the run into the database
