@@ -73,9 +73,8 @@ const LogWorkoutScreen: React.FC = () => {
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
-      if (route.params?.selectedExercise) {
-        const exercise = route.params.selectedExercise;
-        const newExercise: WorkoutExercise = {
+      if (route.params?.selectedExercises && route.params.selectedExercises.length > 0) {
+        const newExercises: WorkoutExercise[] = route.params.selectedExercises.map((exercise) => ({
           id: uuidv4(),
           exerciseLibraryId: exercise.id,
           exerciseName: exercise.name,
@@ -90,14 +89,13 @@ const LogWorkoutScreen: React.FC = () => {
               completed: false,
             },
           ],
-        };
-        setExercises([...exercises, newExercise]);
-        // Clear the param after using it
-        navigation.setParams({ selectedExercise: undefined } as any);
+        }));
+        setExercises((prev) => [...prev, ...newExercises]);
+        navigation.setParams({ selectedExercises: undefined } as any);
       }
     });
     return unsubscribe;
-  }, [navigation, route.params?.selectedExercise]);
+  }, [navigation, route.params?.selectedExercises]);
 
   // Load exercises from template if templateId is provided
   useEffect(() => {

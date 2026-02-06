@@ -12,7 +12,7 @@ import { colors } from '../theme/colors';
 import { spacing, fontSize, fontWeight, borderRadius, touchTarget } from '../theme/spacing';
 import { Input } from '../components/common';
 import { RootStackParamList, ExerciseLibraryItem, MuscleGroup, Equipment } from '../types';
-import { getAll, getFavoriteExercises, addFavoriteExercise, removeFavoriteExercise, isFavoriteExercise } from '../database/database';
+import { getAll, getFavoriteExercises, addFavoriteExercise, removeFavoriteExercise } from '../database/database';
 
 type RouteProps = RouteProp<RootStackParamList, 'ExerciseSearch'>;
 
@@ -40,6 +40,8 @@ const ExerciseSearchScreen: React.FC = () => {
   const [selectedMuscle, setSelectedMuscle] = useState<MuscleGroup | null>(null);
   const [favorites, setFavorites] = useState<ExerciseLibraryItem[]>([]);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedExercises, setSelectedExercises] = useState<ExerciseLibraryItem[]>([]);
 
   useEffect(() => {
     loadExercises();
@@ -111,7 +113,6 @@ const ExerciseSearchScreen: React.FC = () => {
   const filterExercises = () => {
     let filtered = exercises;
 
-    // Filter by search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
@@ -122,7 +123,6 @@ const ExerciseSearchScreen: React.FC = () => {
       );
     }
 
-    // Filter by muscle group
     if (selectedMuscle) {
       filtered = filtered.filter(
         (e) =>
@@ -134,8 +134,21 @@ const ExerciseSearchScreen: React.FC = () => {
     setFilteredExercises(filtered);
   };
 
-  const handleSelect = (exercise: ExerciseLibraryItem) => {
-    navigation.navigate('LogWorkout', { selectedExercise: exercise } as any);
+  const toggleSelect = (exercise: ExerciseLibraryItem) => {
+    const newIds = new Set(selectedIds);
+    if (newIds.has(exercise.id)) {
+      newIds.delete(exercise.id);
+      setSelectedExercises(selectedExercises.filter((e) => e.id !== exercise.id));
+    } else {
+      newIds.add(exercise.id);
+      setSelectedExercises([...selectedExercises, exercise]);
+    }
+    setSelectedIds(newIds);
+  };
+
+  const handleDone = () => {
+    if (selectedExercises.length === 0) return;
+    navigation.navigate('LogWorkout', { selectedExercises } as any);
   };
 
   const getMuscleGroupLabel = (muscleGroup: string): string => {
@@ -164,18 +177,23 @@ const ExerciseSearchScreen: React.FC = () => {
 
   const renderExercise = ({ item }: { item: ExerciseLibraryItem }) => {
     const isFav = favoriteIds.has(item.id);
+    const isSelected = selectedIds.has(item.id);
     return (
       <View style={styles.exerciseItem}>
-        <TouchableOpacity 
-          style={styles.exerciseContent} 
-          onPress={() => handleSelect(item)}
+        <TouchableOpacity
+          style={styles.exerciseContent}
+          onPress={() => toggleSelect(item)}
         >
-          <View style={styles.exerciseIcon}>
-            <Ionicons
-              name={getEquipmentIcon(item.equipment) as any}
-              size={24}
-              color={colors.primary}
-            />
+          <View style={[styles.exerciseIcon, isSelected && styles.exerciseIconSelected]}>
+            {isSelected ? (
+              <Ionicons name="checkmark" size={24} color={colors.white} />
+            ) : (
+              <Ionicons
+                name={getEquipmentIcon(item.equipment) as any}
+                size={24}
+                color={colors.primary}
+              />
+            )}
           </View>
           <View style={styles.exerciseInfo}>
             <Text style={styles.exerciseName}>{item.name}</Text>
@@ -188,16 +206,20 @@ const ExerciseSearchScreen: React.FC = () => {
               )}
             </Text>
           </View>
-          <Ionicons name="add-circle" size={28} color={colors.primary} />
+          <Ionicons
+            name={isSelected ? 'checkmark-circle' : 'add-circle-outline'}
+            size={28}
+            color={isSelected ? colors.success : colors.textSecondary}
+          />
         </TouchableOpacity>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.favoriteButton}
           onPress={() => toggleFavorite(item.id)}
         >
-          <Ionicons 
-            name={isFav ? "star" : "star-outline"} 
-            size={24} 
-            color={isFav ? colors.primary : colors.textSecondary} 
+          <Ionicons
+            name={isFav ? "star" : "star-outline"}
+            size={24}
+            color={isFav ? colors.primary : colors.textSecondary}
           />
         </TouchableOpacity>
       </View>
@@ -251,7 +273,7 @@ const ExerciseSearchScreen: React.FC = () => {
       {/* Favorites Section */}
       {favorites.length > 0 && !searchQuery && !selectedMuscle && (
         <View style={styles.favoritesSection}>
-          <Text style={styles.sectionTitle}>⭐ Favorites</Text>
+          <Text style={styles.sectionTitle}>Favorites</Text>
           {favorites.map((item) => (
             <View key={item.id}>
               {renderExercise({ item })}
@@ -271,7 +293,10 @@ const ExerciseSearchScreen: React.FC = () => {
         data={filteredExercises}
         keyExtractor={(item) => item.id}
         renderItem={renderExercise}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[
+          styles.list,
+          selectedIds.size > 0 && { paddingBottom: 80 },
+        ]}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         ListEmptyComponent={
           <View style={styles.emptyState}>
@@ -283,6 +308,17 @@ const ExerciseSearchScreen: React.FC = () => {
           </View>
         }
       />
+
+      {/* Done Button */}
+      {selectedIds.size > 0 && (
+        <View style={styles.doneBar}>
+          <TouchableOpacity style={styles.doneButton} onPress={handleDone}>
+            <Text style={styles.doneButtonText}>
+              Add {selectedIds.size} Exercise{selectedIds.size !== 1 ? 's' : ''}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 };
@@ -370,6 +406,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: spacing.md,
   },
+  exerciseIconSelected: {
+    backgroundColor: colors.success,
+  },
   exerciseInfo: {
     flex: 1,
   },
@@ -403,6 +442,27 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     color: colors.textDisabled,
     marginTop: spacing.xs,
+  },
+  doneBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: spacing.md,
+    backgroundColor: colors.surface,
+    borderTopWidth: 1,
+    borderColor: colors.border,
+  },
+  doneButton: {
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+  },
+  doneButtonText: {
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.semibold,
+    color: colors.white,
   },
 });
 

@@ -262,7 +262,7 @@ export interface TemplateExercise {
 // Navigation Types
 export type RootStackParamList = {
   Main: undefined;
-  LogWorkout: { workoutId?: string; selectedExercise?: ExerciseLibraryItem; templateId?: string };
+  LogWorkout: { workoutId?: string; selectedExercises?: ExerciseLibraryItem[]; templateId?: string };
   LogRun: { runId?: string };
   ExerciseDetail: { exerciseLibraryId: string };
   WorkoutDetail: { workoutId: string };
