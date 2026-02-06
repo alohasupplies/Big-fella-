@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -13,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { spacing, fontSize, fontWeight, borderRadius } from '../theme/spacing';
 import { Card, Button } from '../components/common';
-import { RootStackParamList, Workout } from '../types';
+import { RootStackParamList, Workout, WorkoutTemplate } from '../types';
 import { useSettings } from '../context/SettingsContext';
 import {
   getRecentWorkouts,
@@ -21,6 +22,7 @@ import {
   getTotalWorkoutCount,
   calculateWorkoutVolume,
 } from '../services/workoutService';
+import { getTemplates, deleteTemplate } from '../services/templateService';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -29,6 +31,7 @@ const LiftScreen: React.FC = () => {
   const { settings } = useSettings();
 
   const [workouts, setWorkouts] = useState<Workout[]>([]);
+  const [templates, setTemplates] = useState<WorkoutTemplate[]>([]);
   const [weeklyVolume, setWeeklyVolume] = useState(0);
   const [totalWorkouts, setTotalWorkouts] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
@@ -43,6 +46,9 @@ const LiftScreen: React.FC = () => {
 
       const count = await getTotalWorkoutCount();
       setTotalWorkouts(count);
+
+      const loadedTemplates = await getTemplates();
+      setTemplates(loadedTemplates);
     } catch (error) {
       console.error('Failed to load lift data:', error);
     }
@@ -81,6 +87,35 @@ const LiftScreen: React.FC = () => {
       .join(', ');
   };
 
+  const getTemplateMuscleGroups = (template: WorkoutTemplate): string => {
+    const muscleGroups = new Set<string>();
+    template.exercises.forEach((ex) => {
+      ex.muscleGroups.forEach((mg) => muscleGroups.add(mg));
+    });
+    return Array.from(muscleGroups)
+      .slice(0, 3)
+      .map((mg) => mg.charAt(0).toUpperCase() + mg.slice(1).replace('_', ' '))
+      .join(', ');
+  };
+
+  const handleDeleteTemplate = (template: WorkoutTemplate) => {
+    Alert.alert(
+      'Delete Template',
+      `Are you sure you want to delete "${template.name}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            await deleteTemplate(template.id);
+            setTemplates(templates.filter((t) => t.id !== template.id));
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <ScrollView
       style={styles.container}
@@ -97,6 +132,40 @@ const LiftScreen: React.FC = () => {
         icon={<Ionicons name="add" size={24} color={colors.white} />}
         style={styles.startButton}
       />
+
+      {/* My Templates */}
+      {templates.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>My Templates</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.templateScroll}
+          >
+            {templates.map((template) => (
+              <TouchableOpacity
+                key={template.id}
+                onPress={() =>
+                  navigation.navigate('LogWorkout', { templateId: template.id })
+                }
+                onLongPress={() => handleDeleteTemplate(template)}
+              >
+                <Card variant="outlined" style={styles.templateCard}>
+                  <Text style={styles.templateName} numberOfLines={1}>
+                    {template.name}
+                  </Text>
+                  <Text style={styles.templateMeta}>
+                    {template.exercises.length} exercise{template.exercises.length !== 1 ? 's' : ''}
+                  </Text>
+                  <Text style={styles.templateMuscles} numberOfLines={1}>
+                    {getTemplateMuscleGroups(template)}
+                  </Text>
+                </Card>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
 
       {/* Stats Overview */}
       <View style={styles.statsRow}>
@@ -211,6 +280,28 @@ const styles = StyleSheet.create({
   },
   startButton: {
     marginBottom: spacing.lg,
+  },
+  templateScroll: {
+    gap: spacing.sm,
+  },
+  templateCard: {
+    width: 150,
+    padding: spacing.md,
+  },
+  templateName: {
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.semibold,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
+  },
+  templateMeta: {
+    fontSize: fontSize.xs,
+    color: colors.textSecondary,
+  },
+  templateMuscles: {
+    fontSize: fontSize.xs,
+    color: colors.primary,
+    marginTop: spacing.xs,
   },
   statsRow: {
     flexDirection: 'row',

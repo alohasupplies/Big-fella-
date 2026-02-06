@@ -238,10 +238,31 @@ export type ProgressionAction =
   | 'maintain'
   | 'deload';
 
+// Workout Template Types
+export interface WorkoutTemplate {
+  id: string;
+  name: string;
+  exercises: TemplateExercise[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TemplateExercise {
+  id: string;
+  templateId: string;
+  exerciseLibraryId: string;
+  exerciseName: string;
+  muscleGroups: MuscleGroup[];
+  orderIndex: number;
+  defaultSets: number;
+  defaultReps?: number;
+  defaultWeight?: number;
+}
+
 // Navigation Types
 export type RootStackParamList = {
   Main: undefined;
-  LogWorkout: { workoutId?: string; selectedExercise?: ExerciseLibraryItem };
+  LogWorkout: { workoutId?: string; selectedExercise?: ExerciseLibraryItem; templateId?: string };
   LogRun: { runId?: string };
   ExerciseDetail: { exerciseLibraryId: string };
   WorkoutDetail: { workoutId: string };

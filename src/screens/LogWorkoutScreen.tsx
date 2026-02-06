@@ -17,9 +17,10 @@ import * as Haptics from 'expo-haptics';
 import { colors } from '../theme/colors';
 import { spacing, fontSize, fontWeight, borderRadius, touchTarget } from '../theme/spacing';
 import { Card, Button, Input } from '../components/common';
-import { RootStackParamList, ExerciseLibraryItem, Set, Exercise } from '../types';
+import { RootStackParamList, ExerciseLibraryItem, Set, Exercise, MuscleGroup } from '../types';
 import { useSettings } from '../context/SettingsContext';
 import { createWorkout, getWorkoutById } from '../services/workoutService';
+import { createTemplate, getTemplateById } from '../services/templateService';
 import { v4 as uuidv4 } from 'uuid';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -97,6 +98,60 @@ const LogWorkoutScreen: React.FC = () => {
     });
     return unsubscribe;
   }, [navigation, route.params?.selectedExercise]);
+
+  // Load exercises from template if templateId is provided
+  useEffect(() => {
+    const loadTemplate = async () => {
+      if (route.params?.templateId) {
+        const template = await getTemplateById(route.params.templateId);
+        if (template) {
+          const templateExercises: WorkoutExercise[] = template.exercises.map((te) => ({
+            id: uuidv4(),
+            exerciseLibraryId: te.exerciseLibraryId,
+            exerciseName: te.exerciseName,
+            muscleGroups: te.muscleGroups as string[],
+            sets: Array.from({ length: te.defaultSets }, () => ({
+              id: uuidv4(),
+              weight: te.defaultWeight?.toString() || '',
+              reps: te.defaultReps?.toString() || '',
+              rpe: '',
+              isWarmup: false,
+              completed: false,
+            })),
+          }));
+          setExercises(templateExercises);
+        }
+        navigation.setParams({ templateId: undefined } as any);
+      }
+    };
+    loadTemplate();
+  }, []);
+
+  const saveAsTemplate = () => {
+    if (exercises.length === 0) {
+      Alert.alert('No Exercises', 'Add at least one exercise before saving a template.');
+      return;
+    }
+    Alert.prompt(
+      'Save as Template',
+      'Give this workout template a name:',
+      async (name) => {
+        if (!name?.trim()) return;
+        await createTemplate(
+          name.trim(),
+          exercises.map((e) => ({
+            exerciseLibraryId: e.exerciseLibraryId,
+            exerciseName: e.exerciseName,
+            muscleGroups: e.muscleGroups as MuscleGroup[],
+            defaultSets: e.sets.length,
+          }))
+        );
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert('Saved', `Template "${name.trim()}" has been saved.`);
+      },
+      'plain-text'
+    );
+  };
 
   const removeExercise = (exerciseId: string) => {
     Alert.alert(
@@ -421,9 +476,13 @@ const LogWorkoutScreen: React.FC = () => {
         )}
       </ScrollView>
 
-      {/* Save Button */}
+      {/* Footer Buttons */}
       {exercises.length > 0 && (
         <View style={styles.footer}>
+          <TouchableOpacity style={styles.saveTemplateButton} onPress={saveAsTemplate}>
+            <Ionicons name="bookmark-outline" size={20} color={colors.primary} />
+            <Text style={styles.saveTemplateText}>Save as Template</Text>
+          </TouchableOpacity>
           <Button
             title="Save Workout"
             onPress={saveWorkout}
@@ -599,6 +658,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderTopWidth: 1,
     borderColor: colors.border,
+  },
+  saveTemplateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  saveTemplateText: {
+    fontSize: fontSize.sm,
+    color: colors.primary,
+    fontWeight: fontWeight.medium,
   },
 });
 

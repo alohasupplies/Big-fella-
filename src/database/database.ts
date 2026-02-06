@@ -175,7 +175,26 @@ export const initDatabase = async (): Promise<void> => {
     `CREATE INDEX IF NOT EXISTS idx_sets_exercise ON sets(exerciseId)`,
     `CREATE INDEX IF NOT EXISTS idx_runs_date ON runs(date)`,
     `CREATE INDEX IF NOT EXISTS idx_personal_records_exercise ON personal_records(exerciseLibraryId)`,
-    `CREATE INDEX IF NOT EXISTS idx_synced_health_runs_hkid ON synced_health_runs(healthKitId)`
+    `CREATE INDEX IF NOT EXISTS idx_synced_health_runs_hkid ON synced_health_runs(healthKitId)`,
+    `CREATE TABLE IF NOT EXISTS workout_templates (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL
+    )`,
+    `CREATE TABLE IF NOT EXISTS template_exercises (
+      id TEXT PRIMARY KEY,
+      templateId TEXT NOT NULL,
+      exerciseLibraryId TEXT NOT NULL,
+      exerciseName TEXT NOT NULL,
+      muscleGroups TEXT NOT NULL,
+      orderIndex INTEGER NOT NULL,
+      defaultSets INTEGER DEFAULT 3,
+      defaultReps INTEGER,
+      defaultWeight REAL,
+      FOREIGN KEY (templateId) REFERENCES workout_templates(id) ON DELETE CASCADE
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_template_exercises_template ON template_exercises(templateId)`
   ];
 
   await executeSqlBatch(database, createTableStatements);
