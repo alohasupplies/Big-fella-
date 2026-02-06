@@ -15,11 +15,26 @@ import { spacing, fontSize, fontWeight, borderRadius } from '../theme/spacing';
 import { Card } from '../components/common';
 import { useSettings } from '../context/SettingsContext';
 import { seedDebugData, clearAllData } from '../utils/debugData';
+import {
+  isHealthKitAvailable,
+  requestHealthKitPermissions,
+  syncRunsFromHealthKit,
+  getLastSyncTime,
+} from '../services/healthService';
 
 const SettingsScreen: React.FC = () => {
   const { settings, updateSetting } = useSettings();
   const [saving, setSaving] = useState(false);
   const [seeding, setSeeding] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [lastSync, setLastSync] = useState<string | null>(null);
+  const healthKitAvailable = isHealthKitAvailable();
+
+  React.useEffect(() => {
+    if (settings.healthSyncEnabled) {
+      getLastSyncTime().then(setLastSync);
+    }
+  }, [settings.healthSyncEnabled]);
 
   const handleUnitChange = async (type: 'weight' | 'distance', value: string) => {
     setSaving(true);
@@ -182,6 +197,96 @@ const SettingsScreen: React.FC = () => {
           </View>
         </View>
       </Card>
+
+      {/* Apple Health Section */}
+      {healthKitAvailable && (
+        <>
+          <Text style={styles.sectionTitle}>Apple Health</Text>
+          <Card variant="outlined" style={styles.card}>
+            <View style={styles.settingRow}>
+              <View style={styles.settingLabelContainer}>
+                <Text style={styles.settingLabel}>Sync Runs from Health</Text>
+                <Text style={styles.settingDescription}>
+                  Automatically import running workouts from Apple Health
+                </Text>
+              </View>
+              <Switch
+                value={settings.healthSyncEnabled}
+                onValueChange={async (value) => {
+                  if (value) {
+                    const granted = await requestHealthKitPermissions();
+                    if (!granted) {
+                      Alert.alert(
+                        'Permission Required',
+                        'Please allow Big Fella Athletics to access your Health data in Settings > Privacy > Health.'
+                      );
+                      return;
+                    }
+                  }
+                  await updateSetting('healthSyncEnabled', value);
+                  if (value) {
+                    setSyncing(true);
+                    try {
+                      const result = await syncRunsFromHealthKit(settings.distanceUnit);
+                      setLastSync(new Date().toISOString());
+                      Alert.alert(
+                        'Sync Complete',
+                        `Imported ${result.imported} run${result.imported !== 1 ? 's' : ''} from Apple Health.${result.skipped > 0 ? ` ${result.skipped} already synced.` : ''}`
+                      );
+                    } catch (error) {
+                      Alert.alert('Sync Failed', 'Could not sync runs from Apple Health.');
+                    } finally {
+                      setSyncing(false);
+                    }
+                  }
+                }}
+                trackColor={{ false: colors.border, true: colors.primaryLight }}
+                thumbColor={settings.healthSyncEnabled ? colors.primary : colors.textDisabled}
+              />
+            </View>
+
+            {settings.healthSyncEnabled && (
+              <>
+                <View style={styles.divider} />
+                <TouchableOpacity
+                  style={styles.debugButton}
+                  onPress={async () => {
+                    setSyncing(true);
+                    try {
+                      const result = await syncRunsFromHealthKit(settings.distanceUnit);
+                      setLastSync(new Date().toISOString());
+                      Alert.alert(
+                        'Sync Complete',
+                        `Imported ${result.imported} run${result.imported !== 1 ? 's' : ''}.${result.skipped > 0 ? ` ${result.skipped} already synced.` : ''}`
+                      );
+                    } catch (error) {
+                      Alert.alert('Sync Failed', 'Could not sync runs from Apple Health.');
+                    } finally {
+                      setSyncing(false);
+                    }
+                  }}
+                  disabled={syncing}
+                >
+                  <View style={styles.debugButtonContent}>
+                    <Ionicons name="sync" size={24} color={colors.primary} />
+                    <View style={styles.debugButtonText}>
+                      <Text style={styles.settingLabel}>Sync Now</Text>
+                      <Text style={styles.settingDescription}>
+                        {syncing
+                          ? 'Syncing...'
+                          : lastSync
+                            ? `Last synced ${new Date(lastSync).toLocaleDateString()}`
+                            : 'Pull runs from the last 30 days'}
+                      </Text>
+                    </View>
+                  </View>
+                  {syncing && <ActivityIndicator color={colors.primary} />}
+                </TouchableOpacity>
+              </>
+            )}
+          </Card>
+        </>
+      )}
 
       {/* Streak Settings */}
       <Text style={styles.sectionTitle}>Streak Settings</Text>

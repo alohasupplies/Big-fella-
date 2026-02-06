@@ -163,11 +163,19 @@ export const initDatabase = async (): Promise<void> => {
       earnedDate TEXT,
       isEarned INTEGER DEFAULT 0
     )`,
+    `CREATE TABLE IF NOT EXISTS synced_health_runs (
+      id TEXT PRIMARY KEY,
+      healthKitId TEXT NOT NULL UNIQUE,
+      runId TEXT NOT NULL,
+      syncedAt TEXT NOT NULL,
+      FOREIGN KEY (runId) REFERENCES runs(id) ON DELETE CASCADE
+    )`,
     `CREATE INDEX IF NOT EXISTS idx_workouts_date ON workouts(date)`,
     `CREATE INDEX IF NOT EXISTS idx_exercises_workout ON exercises(workoutId)`,
     `CREATE INDEX IF NOT EXISTS idx_sets_exercise ON sets(exerciseId)`,
     `CREATE INDEX IF NOT EXISTS idx_runs_date ON runs(date)`,
-    `CREATE INDEX IF NOT EXISTS idx_personal_records_exercise ON personal_records(exerciseLibraryId)`
+    `CREATE INDEX IF NOT EXISTS idx_personal_records_exercise ON personal_records(exerciseLibraryId)`,
+    `CREATE INDEX IF NOT EXISTS idx_synced_health_runs_hkid ON synced_health_runs(healthKitId)`
   ];
 
   await executeSqlBatch(database, createTableStatements);
@@ -194,6 +202,7 @@ const initializeDefaultSettings = async (database: SQLite.WebSQLDatabase) => {
     { key: 'workoutReminderEnabled', value: 'false' },
     { key: 'darkMode', value: 'system' },
     { key: 'monthlyFreezes', value: '2' },
+    { key: 'healthSyncEnabled', value: 'false' },
   ];
 
   for (const setting of defaultSettings) {

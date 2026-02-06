@@ -14,7 +14,16 @@
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.bigfellaathletics.app"
+      "bundleIdentifier": "com.bigfellaathletics.app",
+      "infoPlist": {
+        "NSHealthShareUsageDescription": "Big Fella Athletics reads your running workouts from Apple Health to automatically log your runs and maintain your streak.",
+        "NSHealthUpdateUsageDescription": "Big Fella Athletics does not write data to Apple Health."
+      },
+      "entitlements": {
+        "com.apple.developer.healthkit": true,
+        "com.apple.developer.healthkit.access": ["health-records"],
+        "com.apple.developer.healthkit.background-delivery": true
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -33,6 +42,14 @@
         {
           "icon": "./assets/notification-icon.png",
           "color": "#FF6B35"
+        }
+      ],
+      [
+        "@kingstinct/react-native-healthkit",
+        {
+          "NSHealthShareUsageDescription": "Big Fella Athletics reads your running workouts from Apple Health to automatically log your runs and maintain your streak.",
+          "NSHealthUpdateUsageDescription": false,
+          "background": false
         }
       ]
     ]

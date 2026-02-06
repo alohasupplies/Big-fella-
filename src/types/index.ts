@@ -199,6 +199,7 @@ export interface AppSettings {
   workoutReminderEnabled: boolean;
   darkMode: 'light' | 'dark' | 'system';
   monthlyFreezes: number;
+  healthSyncEnabled: boolean;
 }
 
 // Analytics Types

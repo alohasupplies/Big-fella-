@@ -68,5 +68,9 @@
 	<string>Automatic</string>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Big Fella Athletics reads your running workouts from Apple Health to automatically log your runs and maintain your streak.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Big Fella Athletics does not write data to Apple Health.</string>
 </dict>
 </plist>

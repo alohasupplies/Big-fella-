@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -25,6 +26,10 @@ import {
   formatDuration,
   useStreakFreeze,
 } from '../services/runService';
+import {
+  isHealthKitAvailable,
+  syncRunsFromHealthKit,
+} from '../services/healthService';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -41,9 +46,25 @@ const RunScreen: React.FC = () => {
     longestStreak: 0,
   });
   const [refreshing, setRefreshing] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+
+  const syncFromHealth = async () => {
+    if (!settings.healthSyncEnabled || !isHealthKitAvailable()) return;
+    setSyncing(true);
+    try {
+      await syncRunsFromHealthKit(settings.distanceUnit);
+    } catch (error) {
+      console.error('Health sync failed:', error);
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const loadData = async () => {
     try {
+      // Sync from Apple Health first if enabled
+      await syncFromHealth();
+
       const recentRuns = await getRecentRuns(10);
       setRuns(recentRuns);
 
@@ -132,6 +153,14 @@ const RunScreen: React.FC = () => {
         icon={<Ionicons name="add" size={24} color={colors.white} />}
         style={styles.logButton}
       />
+
+      {/* Apple Health Sync Indicator */}
+      {settings.healthSyncEnabled && syncing && (
+        <View style={styles.syncBanner}>
+          <ActivityIndicator size="small" color={colors.primary} />
+          <Text style={styles.syncText}>Syncing from Apple Health...</Text>
+        </View>
+      )}
 
       {/* Streak Calendar */}
       <StreakCalendar
@@ -388,6 +417,20 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   routeName: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+  },
+  syncBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+  },
+  syncText: {
     fontSize: fontSize.sm,
     color: colors.textSecondary,
   },

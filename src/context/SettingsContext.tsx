@@ -19,6 +19,7 @@ const defaultSettings: AppSettings = {
   workoutReminderEnabled: false,
   darkMode: 'system',
   monthlyFreezes: 2,
+  healthSyncEnabled: false,
 };
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -63,6 +64,9 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
             break;
           case 'darkMode':
             loadedSettings.darkMode = value as 'light' | 'dark' | 'system';
+            break;
+          case 'healthSyncEnabled':
+            loadedSettings.healthSyncEnabled = value === 'true';
             break;
         }
       });
