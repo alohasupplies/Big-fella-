@@ -30,12 +30,23 @@ export const requestHealthKitPermissions = async (): Promise<boolean> => {
     const isAvailable = await Healthkit.isHealthDataAvailable();
     if (!isAvailable) return false;
 
-    await Healthkit.requestAuthorization(
-      [HKQuantityTypeIdentifier.distanceWalkingRunning, HKQuantityTypeIdentifier.activeEnergyBurned],
-      [] // no write permissions needed
-    );
-
-    return true;
+    // First check current authorization status
+    const status = await Healthkit.getAuthorizationStatus();
+    console.log('HealthKit authorization status:', status);
+    
+    // Request authorization for reading health data
+    const readTypes = [
+      HKQuantityTypeIdentifier.distanceWalkingRunning, 
+      HKQuantityTypeIdentifier.activeEnergyBurned
+    ];
+    
+    await Healthkit.requestAuthorization(readTypes, []);
+    
+    // Check status again after requesting
+    const newStatus = await Healthkit.getAuthorizationStatus();
+    console.log('HealthKit authorization status after request:', newStatus);
+    
+    return newStatus === 'sharingAuthorized';
   } catch (error) {
     console.error('Failed to request HealthKit permissions:', error);
     return false;
@@ -98,9 +109,12 @@ export const syncRunsFromHealthKit = async (
     const workouts = await Healthkit.queryWorkouts({
       from: startDate,
       to: now,
-      energyUnit: 'kilocalories',
-      distanceUnit: 'meter',
+      energyUnit: 'kcal',
+      distanceUnit: 'm',
     });
+
+    console.log('HealthKit workouts found:', workouts?.length || 0);
+    console.log('Workout details:', workouts);
 
     if (!workouts || workouts.length === 0) {
       return result;
@@ -108,12 +122,20 @@ export const syncRunsFromHealthKit = async (
 
     for (const workout of workouts) {
       try {
+        console.log('Processing workout:', {
+          activityType: workout.workoutActivityType,
+          runningType: HKWorkoutActivityType.running,
+          walkingType: HKWorkoutActivityType.walking,
+          distance: workout.totalDistance
+        });
+        
         // Only import running workouts
         const activityType = workout.workoutActivityType;
         if (
           activityType !== HKWorkoutActivityType.running &&
           activityType !== HKWorkoutActivityType.walking
         ) {
+          console.log('Skipping workout - not running/walking:', activityType);
           continue;
         }
 
