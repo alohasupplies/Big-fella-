@@ -20,6 +20,7 @@ const defaultSettings: AppSettings = {
   darkMode: 'system',
   monthlyFreezes: 2,
   healthSyncEnabled: false,
+  restTimerDefault: 90,
 };
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -67,6 +68,9 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
             break;
           case 'healthSyncEnabled':
             loadedSettings.healthSyncEnabled = value === 'true';
+            break;
+          case 'restTimerDefault':
+            loadedSettings.restTimerDefault = parseFloat(value);
             break;
         }
       });

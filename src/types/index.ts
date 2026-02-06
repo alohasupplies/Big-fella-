@@ -200,6 +200,7 @@ export interface AppSettings {
   darkMode: 'light' | 'dark' | 'system';
   monthlyFreezes: number;
   healthSyncEnabled: boolean;
+  restTimerDefault: number; // seconds
 }
 
 // Analytics Types

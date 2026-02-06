@@ -236,7 +236,7 @@ const LogWorkoutScreen: React.FC = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     // Start rest timer (default 90 seconds)
-    setRestTimer(90);
+    setRestTimer(settings.restTimerDefault);
     setIsTimerRunning(true);
   };
 

@@ -199,6 +199,38 @@ const SettingsScreen: React.FC = () => {
         </View>
       </Card>
 
+      {/* Workout Settings */}
+      <Text style={styles.sectionTitle}>Workout</Text>
+      <Card variant="outlined" style={styles.card}>
+        <View>
+          <Text style={styles.settingLabel}>Rest Timer</Text>
+          <Text style={styles.settingDescription}>
+            Default rest time between sets
+          </Text>
+          <View style={styles.restTimerOptions}>
+            {[30, 60, 90, 120, 180].map((value) => (
+              <TouchableOpacity
+                key={value}
+                style={[
+                  styles.restTimerOption,
+                  settings.restTimerDefault === value && styles.restTimerOptionActive,
+                ]}
+                onPress={() => updateSetting('restTimerDefault', value)}
+              >
+                <Text
+                  style={[
+                    styles.restTimerOptionText,
+                    settings.restTimerDefault === value && styles.restTimerOptionTextActive,
+                  ]}
+                >
+                  {value >= 60 ? `${value / 60}m` : `${value}s`}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      </Card>
+
       {/* Apple Health Section */}
       {healthKitAvailable && (
         <>
@@ -581,6 +613,32 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   segmentTextActive: {
+    color: colors.white,
+    fontWeight: fontWeight.medium,
+  },
+  restTimerOptions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  restTimerOption: {
+    flex: 1,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.sm,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+  },
+  restTimerOptionActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  restTimerOptionText: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+  },
+  restTimerOptionTextActive: {
     color: colors.white,
     fontWeight: fontWeight.medium,
   },
