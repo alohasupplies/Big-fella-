@@ -80,13 +80,21 @@ const RunDetailScreen: React.FC = () => {
           })}
         </Text>
 
-        {run.runType && (
-          <View style={styles.runTypeBadge}>
-            <Text style={styles.runTypeText}>
-              {run.runType.charAt(0).toUpperCase() + run.runType.slice(1)} Run
-            </Text>
-          </View>
-        )}
+        <View style={styles.badgeRow}>
+          {run.runType && (
+            <View style={styles.runTypeBadge}>
+              <Text style={styles.runTypeText}>
+                {run.runType.charAt(0).toUpperCase() + run.runType.slice(1)} Run
+              </Text>
+            </View>
+          )}
+          {run.notes === 'Synced from Apple Health' && (
+            <View style={styles.healthBadge}>
+              <Ionicons name="heart" size={12} color="#FF2D55" />
+              <Text style={styles.healthBadgeText}>Apple Health</Text>
+            </View>
+          )}
+        </View>
       </Card>
 
       {/* Main Stats */}
@@ -199,8 +207,13 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.semibold,
     color: colors.textPrimary,
   },
-  runTypeBadge: {
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
     marginTop: spacing.sm,
+  },
+  runTypeBadge: {
     backgroundColor: colors.primaryLight,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
@@ -209,6 +222,20 @@ const styles = StyleSheet.create({
   runTypeText: {
     fontSize: fontSize.sm,
     color: colors.primaryDark,
+    fontWeight: fontWeight.medium,
+  },
+  healthBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: 'rgba(255, 45, 85, 0.15)',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+  },
+  healthBadgeText: {
+    fontSize: fontSize.sm,
+    color: '#FF2D55',
     fontWeight: fontWeight.medium,
   },
   statsGrid: {

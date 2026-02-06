@@ -240,6 +240,12 @@ const RunScreen: React.FC = () => {
                         </Text>
                       </View>
                     )}
+                    {run.notes === 'Synced from Apple Health' && (
+                      <View style={styles.healthBadge}>
+                        <Ionicons name="heart" size={10} color="#FF2D55" />
+                        <Text style={styles.healthBadgeText}>Health</Text>
+                      </View>
+                    )}
                   </View>
                   <Ionicons
                     name="chevron-forward"
@@ -386,6 +392,20 @@ const styles = StyleSheet.create({
   runTypeText: {
     fontSize: fontSize.xs,
     color: colors.primaryDark,
+    fontWeight: fontWeight.medium,
+  },
+  healthBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: 'rgba(255, 45, 85, 0.15)',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.sm,
+  },
+  healthBadgeText: {
+    fontSize: fontSize.xs,
+    color: '#FF2D55',
     fontWeight: fontWeight.medium,
   },
   runStats: {
