@@ -43,14 +43,6 @@
           "icon": "./assets/notification-icon.png",
           "color": "#FF6B35"
         }
-      ],
-      [
-        "@kingstinct/react-native-healthkit",
-        {
-          "NSHealthShareUsageDescription": "Big Fella Athletics reads your running workouts from Apple Health to automatically log your runs and maintain your streak.",
-          "NSHealthUpdateUsageDescription": "Big Fella Athletics does not write data to Apple Health.",
-          "background": false
-        }
       ]
     ]
   }

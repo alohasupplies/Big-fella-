@@ -7,6 +7,7 @@ import { runQuery, getFirst, getAll } from '../database/database';
 let Healthkit: any = null;
 let HKQuantityTypeIdentifier: any = null;
 let HKWorkoutActivityType: any = null;
+let HKWorkoutTypeIdentifier: string | null = null;
 
 if (Platform.OS === 'ios') {
   try {
@@ -14,6 +15,7 @@ if (Platform.OS === 'ios') {
     Healthkit = hk.default;
     HKQuantityTypeIdentifier = hk.HKQuantityTypeIdentifier;
     HKWorkoutActivityType = hk.HKWorkoutActivityType;
+    HKWorkoutTypeIdentifier = hk.HKWorkoutTypeIdentifier ?? 'HKWorkoutTypeIdentifier';
   } catch (e) {
     console.warn('HealthKit not available:', e);
   }
@@ -30,23 +32,11 @@ export const requestHealthKitPermissions = async (): Promise<boolean> => {
     const isAvailable = await Healthkit.isHealthDataAvailable();
     if (!isAvailable) return false;
 
-    // First check current authorization status
-    const status = await Healthkit.getAuthorizationStatus();
-    console.log('HealthKit authorization status:', status);
+    // Request authorization for workout data
+    await Healthkit.requestAuthorization([HKWorkoutTypeIdentifier], []);
     
-    // Request authorization for reading health data
-    const readTypes = [
-      HKQuantityTypeIdentifier.distanceWalkingRunning, 
-      HKQuantityTypeIdentifier.activeEnergyBurned
-    ];
-    
-    await Healthkit.requestAuthorization(readTypes, []);
-    
-    // Check status again after requesting
-    const newStatus = await Healthkit.getAuthorizationStatus();
-    console.log('HealthKit authorization status after request:', newStatus);
-    
-    return newStatus === 'sharingAuthorized';
+    // For this version, assume authorization was granted if no error was thrown
+    return true;
   } catch (error) {
     console.error('Failed to request HealthKit permissions:', error);
     return false;
@@ -140,7 +130,11 @@ export const syncRunsFromHealthKit = async (
         }
 
         // Only count actual running (skip walking unless distance > 1 mile)
-        const distanceMeters = workout.totalDistance || 0;
+        // totalDistance may be a number or an object like { quantity: number, unit: string }
+        const rawDistance = workout.totalDistance;
+        const distanceMeters = typeof rawDistance === 'object' && rawDistance !== null
+          ? rawDistance.quantity
+          : (rawDistance || 0);
         if (activityType === HKWorkoutActivityType.walking && distanceMeters < 1609) {
           continue;
         }
