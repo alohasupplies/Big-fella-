@@ -546,6 +546,22 @@ const SettingsScreen: React.FC = () => {
           </View>
         </View>
       </Card>
+
+      {/* Apple Health Usage */}
+      <Text style={styles.sectionTitle}>Why Apple Health</Text>
+      <Card variant="outlined" style={styles.card}>
+        <View style={styles.infoRow}>
+          <Ionicons name="heart-circle" size={24} color={colors.primary} />
+          <View style={styles.infoContent}>
+            <Text style={styles.infoTitle}>Apple Health Keeps Runs in Sync</Text>
+            <Text style={styles.infoDescription}>
+              We use Apple Health to import your running workouts so your activity stays in one
+              place. Access is optional and only used to read run data you choose to sync. All data
+              stays on your device.
+            </Text>
+          </View>
+        </View>
+      </Card>
     </ScrollView>
   );
 };
