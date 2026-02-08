@@ -83,7 +83,8 @@ export interface HealthSyncResult {
 // Fetch running workouts from HealthKit and import them
 export const syncRunsFromHealthKit = async (
   distanceUnit: 'miles' | 'km' = 'miles',
-  daysBack: number = 30
+  daysBack: number = 30,
+  incremental: boolean = false
 ): Promise<HealthSyncResult> => {
   if (!isHealthKitAvailable()) {
     return { imported: 0, skipped: 0, errors: 0 };
@@ -93,7 +94,21 @@ export const syncRunsFromHealthKit = async (
 
   try {
     const now = new Date();
-    const startDate = new Date(now.getTime() - daysBack * 24 * 60 * 60 * 1000);
+    let startDate = new Date(now.getTime() - daysBack * 24 * 60 * 60 * 1000);
+
+    // For incremental syncs, only query from last sync time (with a small overlap buffer)
+    if (incremental) {
+      const lastSync = await getLastSyncTime();
+      if (lastSync) {
+        const lastSyncDate = new Date(lastSync);
+        // Go back 1 hour from last sync to catch any workouts that may have been
+        // in-progress during the previous sync
+        const bufferDate = new Date(lastSyncDate.getTime() - 60 * 60 * 1000);
+        if (bufferDate > startDate) {
+          startDate = bufferDate;
+        }
+      }
+    }
 
     // Query HealthKit for running workouts
     const workouts = await Healthkit.queryWorkouts({
@@ -248,4 +263,46 @@ export const getSyncedRunCount = async (): Promise<number> => {
     'SELECT COUNT(*) as count FROM synced_health_runs'
   );
   return result?.count || 0;
+};
+
+// Quick incremental sync - only fetches workouts since last sync
+export const syncRecentFromHealthKit = async (
+  distanceUnit: 'miles' | 'km' = 'miles'
+): Promise<HealthSyncResult> => {
+  return syncRunsFromHealthKit(distanceUnit, 30, true);
+};
+
+// Subscribe to HealthKit workout changes for real-time updates
+// Returns an unsubscribe function, or null if not available
+export const subscribeToWorkoutChanges = (
+  onNewWorkout: () => void
+): (() => void) | null => {
+  if (!isHealthKitAvailable() || !Healthkit || !HKWorkoutTypeIdentifier) {
+    return null;
+  }
+
+  try {
+    // Use HealthKit's anchor-based observation to detect new workouts
+    const subscription = Healthkit.subscribeToChanges(
+      HKWorkoutTypeIdentifier,
+      () => {
+        onNewWorkout();
+      }
+    );
+
+    // Return unsubscribe function
+    if (subscription && typeof subscription === 'object' && subscription.remove) {
+      return () => subscription.remove();
+    }
+    if (typeof subscription === 'function') {
+      return subscription;
+    }
+    // If the library returns a promise or subscription identifier, wrap cleanup
+    return () => {
+      // Best-effort cleanup
+    };
+  } catch (error) {
+    console.warn('Could not subscribe to HealthKit workout changes:', error);
+    return null;
+  }
 };
