@@ -189,7 +189,7 @@ export const syncRunsFromHealthKit = async (
         const runType: RunType = activityType === HKWorkoutActivityType.walking
           ? 'walk'
           : classifyRunType(paceMinPerMile, durationSeconds);
-        const runDate = startTime.toISOString().split('T')[0];
+        const runDate = `${startTime.getFullYear()}-${String(startTime.getMonth() + 1).padStart(2, '0')}-${String(startTime.getDate()).padStart(2, '0')}`;
 
         // Insert the run into the database
         const runId = uuidv4();
