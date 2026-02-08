@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -22,25 +22,18 @@ const RunDetailScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute<RouteProps>();
   const { settings } = useSettings();
-  const { runId } = route.params;
+  const { runId, run: passedRun } = route.params;
 
-  const [run, setRun] = useState<Run | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [run, setRun] = useState<Run | null>(passedRun ?? null);
 
   useEffect(() => {
-    loadRun();
-  }, [runId]);
-
-  const loadRun = async () => {
-    try {
-      const data = await getRunById(runId);
-      setRun(data);
-    } catch (error) {
+    // Refresh from database in background to ensure data is fresh
+    getRunById(runId).then((data) => {
+      if (data) setRun(data);
+    }).catch((error) => {
       console.error('Failed to load run:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    });
+  }, [runId]);
 
   const handleDelete = () => {
     Alert.alert(
@@ -60,7 +53,7 @@ const RunDetailScreen: React.FC = () => {
     );
   };
 
-  if (loading || !run) {
+  if (!run) {
     return (
       <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>Loading...</Text>
