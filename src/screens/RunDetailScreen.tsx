@@ -54,11 +54,7 @@ const RunDetailScreen: React.FC = () => {
   };
 
   if (!run) {
-    return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Loading...</Text>
-      </View>
-    );
+    return <View style={styles.container} />;
   }
 
   return (
@@ -182,15 +178,6 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: spacing.md,
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loadingText: {
-    fontSize: fontSize.md,
-    color: colors.textSecondary,
   },
   headerCard: {
     marginBottom: spacing.lg,
