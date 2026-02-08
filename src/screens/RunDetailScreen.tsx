@@ -14,6 +14,7 @@ import { Card, Button } from '../components/common';
 import { RootStackParamList, Run } from '../types';
 import { useSettings } from '../context/SettingsContext';
 import { getRunById, deleteRun, formatPace, formatDuration } from '../services/runService';
+import { parseLocalDate } from '../utils/date';
 
 type RouteProps = RouteProp<RootStackParamList, 'RunDetail'>;
 
@@ -72,7 +73,7 @@ const RunDetailScreen: React.FC = () => {
       {/* Header Card */}
       <Card variant="elevated" style={styles.headerCard}>
         <Text style={styles.date}>
-          {new Date(run.date).toLocaleDateString('en-US', {
+          {parseLocalDate(run.date).toLocaleDateString('en-US', {
             weekday: 'long',
             year: 'numeric',
             month: 'long',

@@ -26,10 +26,8 @@ import {
   formatDuration,
   useStreakFreeze,
 } from '../services/runService';
-import {
-  isHealthKitAvailable,
-  syncRunsFromHealthKit,
-} from '../services/healthService';
+import { useHealthSync } from '../hooks/useHealthSync';
+import { parseLocalDate } from '../utils/date';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -48,23 +46,8 @@ const RunScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
-  const syncFromHealth = async () => {
-    if (!settings.healthSyncEnabled || !isHealthKitAvailable()) return;
-    setSyncing(true);
+  const loadData = useCallback(async () => {
     try {
-      await syncRunsFromHealthKit(settings.distanceUnit);
-    } catch (error) {
-      console.error('Health sync failed:', error);
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  const loadData = async () => {
-    try {
-      // Sync from Apple Health first if enabled
-      await syncFromHealth();
-
       const recentRuns = await getRecentRuns(10);
       setRuns(recentRuns);
 
@@ -79,16 +62,28 @@ const RunScreen: React.FC = () => {
     } catch (error) {
       console.error('Failed to load run data:', error);
     }
-  };
+  }, [settings.streakMinDistance, settings.streakMinDuration]);
+
+  // Dynamic health sync: listens for HealthKit changes, app foregrounding, etc.
+  const { triggerSync } = useHealthSync({
+    onSyncStart: () => setSyncing(true),
+    onSyncComplete: () => {
+      setSyncing(false);
+      loadData();
+    },
+    onSyncError: () => setSyncing(false),
+  });
 
   useFocusEffect(
     useCallback(() => {
+      triggerSync();
       loadData();
-    }, [settings.streakMinDistance, settings.streakMinDuration])
+    }, [triggerSync, loadData])
   );
 
   const onRefresh = async () => {
     setRefreshing(true);
+    triggerSync();
     await loadData();
     setRefreshing(false);
   };
@@ -100,7 +95,7 @@ const RunScreen: React.FC = () => {
       // Option to log a run for this date
       Alert.alert(
         'No Run Logged',
-        `Would you like to log a run for ${new Date(date).toLocaleDateString()}?`,
+        `Would you like to log a run for ${parseLocalDate(date).toLocaleDateString()}?`,
         [
           { text: 'Cancel', style: 'cancel' },
           {
@@ -227,7 +222,7 @@ const RunScreen: React.FC = () => {
                 <View style={styles.runHeader}>
                   <View style={styles.runDateContainer}>
                     <Text style={styles.runDate}>
-                      {new Date(run.date).toLocaleDateString('en-US', {
+                      {parseLocalDate(run.date).toLocaleDateString('en-US', {
                         weekday: 'short',
                         month: 'short',
                         day: 'numeric',
