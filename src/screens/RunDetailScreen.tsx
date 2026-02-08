@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,7 @@ import { spacing, fontSize, fontWeight, borderRadius } from '../theme/spacing';
 import { Card, Button } from '../components/common';
 import { RootStackParamList, Run } from '../types';
 import { useSettings } from '../context/SettingsContext';
-import { getRunById, deleteRun, formatPace, formatDuration } from '../services/runService';
+import { deleteRun, formatPace, formatDuration } from '../services/runService';
 import { parseLocalDate } from '../utils/date';
 
 type RouteProps = RouteProp<RootStackParamList, 'RunDetail'>;
@@ -22,18 +22,7 @@ const RunDetailScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute<RouteProps>();
   const { settings } = useSettings();
-  const { runId, run: passedRun } = route.params;
-
-  const [run, setRun] = useState<Run | null>(passedRun ?? null);
-
-  useEffect(() => {
-    // Refresh from database in background to ensure data is fresh
-    getRunById(runId).then((data) => {
-      if (data) setRun(data);
-    }).catch((error) => {
-      console.error('Failed to load run:', error);
-    });
-  }, [runId]);
+  const { runId, run } = route.params;
 
   const handleDelete = () => {
     Alert.alert(
@@ -52,10 +41,6 @@ const RunDetailScreen: React.FC = () => {
       ]
     );
   };
-
-  if (!run) {
-    return <View style={styles.container} />;
-  }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
