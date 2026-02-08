@@ -27,6 +27,7 @@ import {
   useStreakFreeze,
 } from '../services/runService';
 import { useHealthSync } from '../hooks/useHealthSync';
+import { parseLocalDate } from '../utils/date';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -94,7 +95,7 @@ const RunScreen: React.FC = () => {
       // Option to log a run for this date
       Alert.alert(
         'No Run Logged',
-        `Would you like to log a run for ${new Date(date).toLocaleDateString()}?`,
+        `Would you like to log a run for ${parseLocalDate(date).toLocaleDateString()}?`,
         [
           { text: 'Cancel', style: 'cancel' },
           {
@@ -221,7 +222,7 @@ const RunScreen: React.FC = () => {
                 <View style={styles.runHeader}>
                   <View style={styles.runDateContainer}>
                     <Text style={styles.runDate}>
-                      {new Date(run.date).toLocaleDateString('en-US', {
+                      {parseLocalDate(run.date).toLocaleDateString('en-US', {
                         weekday: 'short',
                         month: 'short',
                         day: 'numeric',

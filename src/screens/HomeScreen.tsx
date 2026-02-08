@@ -27,6 +27,7 @@ import {
   calculateCurrentStreak,
   getWeeklyRunStats,
 } from '../services/runService';
+import { parseLocalDate } from '../utils/date';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -71,8 +72,8 @@ const HomeScreen: React.FC = () => {
 
       // Combine and sort by date
       const combined = [...workouts, ...runs].sort((a, b) => {
-        const dateA = new Date(a.date).getTime();
-        const dateB = new Date(b.date).getTime();
+        const dateA = parseLocalDate(a.date).getTime();
+        const dateB = parseLocalDate(b.date).getTime();
         return dateB - dateA;
       }).slice(0, 5);
 
@@ -226,7 +227,7 @@ const HomeScreen: React.FC = () => {
                         : `${item.distance.toFixed(1)} ${settings.distanceUnit}`}
                     </Text>
                     <Text style={styles.activityDate}>
-                      {new Date(item.date).toLocaleDateString('en-US', {
+                      {parseLocalDate(item.date).toLocaleDateString('en-US', {
                         weekday: 'short',
                         month: 'short',
                         day: 'numeric',

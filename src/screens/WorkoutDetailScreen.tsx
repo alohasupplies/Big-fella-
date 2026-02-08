@@ -15,6 +15,7 @@ import { Card, Button } from '../components/common';
 import { RootStackParamList, Workout } from '../types';
 import { useSettings } from '../context/SettingsContext';
 import { getWorkoutById, calculateWorkoutVolume, deleteWorkout } from '../services/workoutService';
+import { parseLocalDate } from '../utils/date';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteProps = RouteProp<RootStackParamList, 'WorkoutDetail'>;
@@ -88,7 +89,7 @@ const WorkoutDetailScreen: React.FC = () => {
       {/* Header Stats */}
       <Card variant="elevated" style={styles.headerCard}>
         <Text style={styles.date}>
-          {new Date(workout.date).toLocaleDateString('en-US', {
+          {parseLocalDate(workout.date).toLocaleDateString('en-US', {
             weekday: 'long',
             year: 'numeric',
             month: 'long',

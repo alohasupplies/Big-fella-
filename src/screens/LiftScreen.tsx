@@ -23,6 +23,7 @@ import {
   calculateWorkoutVolume,
 } from '../services/workoutService';
 import { getTemplates, deleteTemplate } from '../services/templateService';
+import { parseLocalDate } from '../utils/date';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -207,7 +208,7 @@ const LiftScreen: React.FC = () => {
                 <View style={styles.workoutHeader}>
                   <View>
                     <Text style={styles.workoutDate}>
-                      {new Date(workout.date).toLocaleDateString('en-US', {
+                      {parseLocalDate(workout.date).toLocaleDateString('en-US', {
                         weekday: 'long',
                         month: 'short',
                         day: 'numeric',

@@ -17,6 +17,7 @@ import { useSettings } from '../context/SettingsContext';
 import { getFirst, getAll } from '../database/database';
 import { getExerciseHistory, getExercisePRs } from '../services/workoutService';
 import { calculateProgressionRecommendation } from '../services/progressionService';
+import { parseLocalDate } from '../utils/date';
 
 type RouteProps = RouteProp<RootStackParamList, 'ExerciseDetail'>;
 
@@ -134,7 +135,7 @@ const ExerciseDetailScreen: React.FC = () => {
   const weightData = history.slice(0, 10).reverse().map((h) => h.maxWeight);
   const volumeData = history.slice(0, 10).reverse().map((h) => h.totalVolume / 1000);
   const labels = history.slice(0, 10).reverse().map((h) =>
-    new Date(h.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    parseLocalDate(h.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   );
 
   const best1RM = prs.find((p) => p.recordType === '1rm');
@@ -267,7 +268,7 @@ const ExerciseDetailScreen: React.FC = () => {
           <Card key={index} variant="outlined" style={styles.historyCard}>
             <View style={styles.historyHeader}>
               <Text style={styles.historyDate}>
-                {new Date(entry.date).toLocaleDateString('en-US', {
+                {parseLocalDate(entry.date).toLocaleDateString('en-US', {
                   weekday: 'short',
                   month: 'short',
                   day: 'numeric',
