@@ -146,13 +146,8 @@ const HomeScreen: React.FC = () => {
 
       {/* Streak Card */}
       <Card variant="elevated" style={styles.streakCard}>
-        <View style={styles.streakContainer}>
-          <Ionicons name="flame" size={48} color={colors.primary} />
-          <View style={styles.streakInfo}>
-            <Text style={styles.streakNumber}>{currentStreak}</Text>
-            <Text style={styles.streakLabel}>Day Run Streak</Text>
-          </View>
-        </View>
+        <Text style={styles.streakNumber}>{currentStreak}</Text>
+        <Text style={styles.streakLabel}>Day Run Streak</Text>
         {currentStreak > 0 && (
           <Text style={styles.streakMotivation}>
             Keep it going! Don't break the chain!
