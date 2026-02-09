@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { spacing, fontSize, fontWeight, borderRadius } from '../../theme/spacing';
 import { Run } from '../../types';
 import { getRunsForMonth } from '../../services/runService';
+import { syncMonthFromHealthKit, isHealthKitAvailable } from '../../services/healthService';
+import { useSettings } from '../../context/SettingsContext';
 
 interface StreakCalendarProps {
   onDayPress?: (date: string, runs: Run[]) => void;
@@ -15,19 +17,47 @@ export const StreakCalendar: React.FC<StreakCalendarProps> = ({
   onDayPress,
   currentStreak,
 }) => {
+  const { settings } = useSettings();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [runs, setRuns] = useState<Run[]>([]);
   const [loading, setLoading] = useState(false);
+  const backfilledMonths = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth() + 1;
+    const monthKey = `${year}-${month}`;
 
-    console.log(`[StreakCalendar] Loading month: ${year}-${month}, currentDate=${currentDate.toISOString()}`);
     setLoading(true);
-    getRunsForMonth(year, month).then((monthRuns) => {
-      console.log(`[StreakCalendar] Got ${monthRuns.length} runs for ${year}-${month}, cancelled=${cancelled}`);
+    getRunsForMonth(year, month).then(async (monthRuns) => {
+      if (cancelled) return;
+
+      // If no local runs and HealthKit is enabled, try backfilling this month
+      if (
+        monthRuns.length === 0 &&
+        settings.healthSyncEnabled &&
+        isHealthKitAvailable() &&
+        !backfilledMonths.current.has(monthKey)
+      ) {
+        backfilledMonths.current.add(monthKey);
+        try {
+          const syncResult = await syncMonthFromHealthKit(year, month, settings.distanceUnit);
+          if (cancelled) return;
+          if (syncResult.imported > 0) {
+            // Re-fetch after importing
+            const updatedRuns = await getRunsForMonth(year, month);
+            if (!cancelled) {
+              setRuns(updatedRuns);
+              setLoading(false);
+            }
+            return;
+          }
+        } catch (err) {
+          // Backfill failed, just show empty month
+        }
+      }
+
       if (!cancelled) {
         setRuns(monthRuns);
         setLoading(false);
@@ -40,7 +70,7 @@ export const StreakCalendar: React.FC<StreakCalendarProps> = ({
     });
 
     return () => { cancelled = true; };
-  }, [currentDate]);
+  }, [currentDate, settings.healthSyncEnabled, settings.distanceUnit]);
 
   const getDaysInMonth = (date: Date): number => {
     return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();

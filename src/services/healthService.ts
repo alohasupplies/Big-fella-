@@ -87,7 +87,9 @@ export interface HealthSyncResult {
 export const syncRunsFromHealthKit = async (
   distanceUnit: 'miles' | 'km' = 'miles',
   daysBack: number = 30,
-  incremental: boolean = false
+  incremental: boolean = false,
+  fromDate?: Date,
+  toDate?: Date
 ): Promise<HealthSyncResult> => {
   if (!isHealthKitAvailable()) {
     return { imported: 0, skipped: 0, errors: 0 };
@@ -96,11 +98,11 @@ export const syncRunsFromHealthKit = async (
   const result: HealthSyncResult = { imported: 0, skipped: 0, errors: 0 };
 
   try {
-    const now = new Date();
-    let startDate = new Date(now.getTime() - daysBack * 24 * 60 * 60 * 1000);
+    const now = toDate || new Date();
+    let startDate = fromDate || new Date(now.getTime() - daysBack * 24 * 60 * 60 * 1000);
 
     // For incremental syncs, only query from last sync time (with a small overlap buffer)
-    if (incremental) {
+    if (incremental && !fromDate) {
       const lastSync = await getLastSyncTime();
       if (lastSync) {
         const lastSyncDate = new Date(lastSync);
@@ -245,6 +247,23 @@ export const syncRunsFromHealthKit = async (
   }
 
   return result;
+};
+
+// Sync a specific month from HealthKit (for on-demand calendar backfill)
+export const syncMonthFromHealthKit = async (
+  year: number,
+  month: number,
+  distanceUnit: 'miles' | 'km' = 'miles'
+): Promise<HealthSyncResult> => {
+  if (!isHealthKitAvailable()) {
+    return { imported: 0, skipped: 0, errors: 0 };
+  }
+
+  const from = new Date(year, month - 1, 1);
+  const to = new Date(year, month, 0, 23, 59, 59, 999);
+
+  // Reuse the main sync logic with explicit date range
+  return syncRunsFromHealthKit(distanceUnit, 0, false, from, to);
 };
 
 // Clear all synced health runs and re-import
