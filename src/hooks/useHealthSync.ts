@@ -24,15 +24,20 @@ interface UseHealthSyncOptions {
  */
 export const useHealthSync = (options: UseHealthSyncOptions = {}) => {
   const { settings } = useSettings();
-  const { onSyncStart, onSyncComplete, onSyncError } = options;
+
+  // Store callbacks in refs to avoid re-creating performSync on every render
+  const callbacksRef = useRef(options);
+  callbacksRef.current = options;
 
   const isSyncing = useRef(false);
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSyncTime = useRef<number>(0);
+  const syncTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Minimum interval between syncs (in ms) to avoid hammering HealthKit
   const MIN_SYNC_INTERVAL = 30_000; // 30 seconds
+  const SYNC_TIMEOUT = 15_000; // 15 second safety timeout
 
   const performSync = useCallback(async () => {
     if (!settings.healthSyncEnabled || !isHealthKitAvailable()) return;
@@ -44,18 +49,30 @@ export const useHealthSync = (options: UseHealthSyncOptions = {}) => {
 
     isSyncing.current = true;
     lastSyncTime.current = now;
-    onSyncStart?.();
+    callbacksRef.current.onSyncStart?.();
+
+    // Safety timeout: if sync hangs, force-clear the syncing state
+    syncTimeout.current = setTimeout(() => {
+      if (isSyncing.current) {
+        isSyncing.current = false;
+        callbacksRef.current.onSyncError?.('Sync timed out');
+      }
+    }, SYNC_TIMEOUT);
 
     try {
       const result = await syncRecentFromHealthKit(settings.distanceUnit);
-      onSyncComplete?.(result);
+      callbacksRef.current.onSyncComplete?.(result);
     } catch (error) {
       console.error('Health sync failed:', error);
-      onSyncError?.(error);
+      callbacksRef.current.onSyncError?.(error);
     } finally {
       isSyncing.current = false;
+      if (syncTimeout.current) {
+        clearTimeout(syncTimeout.current);
+        syncTimeout.current = null;
+      }
     }
-  }, [settings.healthSyncEnabled, settings.distanceUnit, onSyncStart, onSyncComplete, onSyncError]);
+  }, [settings.healthSyncEnabled, settings.distanceUnit]);
 
   // Debounced sync for rapid-fire triggers (e.g. HealthKit observer firing multiple times)
   const debouncedSync = useCallback(() => {
@@ -108,11 +125,14 @@ export const useHealthSync = (options: UseHealthSyncOptions = {}) => {
     };
   }, [settings.healthSyncEnabled, performSync]);
 
-  // Cleanup debounce timer
+  // Cleanup timers on unmount
   useEffect(() => {
     return () => {
       if (debounceTimer.current) {
         clearTimeout(debounceTimer.current);
+      }
+      if (syncTimeout.current) {
+        clearTimeout(syncTimeout.current);
       }
     };
   }, []);
