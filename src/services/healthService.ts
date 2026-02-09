@@ -30,15 +30,18 @@ export const requestHealthKitPermissions = async (): Promise<boolean> => {
 
   try {
     const isAvailable = await Healthkit.isHealthDataAvailable();
+    console.log('[HealthKit] isHealthDataAvailable:', isAvailable);
     if (!isAvailable) return false;
 
+    console.log('[HealthKit] Requesting authorization with read:', [HKWorkoutTypeIdentifier]);
     // Request authorization for workout data
     await Healthkit.requestAuthorization([HKWorkoutTypeIdentifier], []);
+    console.log('[HealthKit] Authorization request completed successfully');
     
     // For this version, assume authorization was granted if no error was thrown
     return true;
   } catch (error) {
-    console.error('Failed to request HealthKit permissions:', error);
+    console.error('[HealthKit] Failed to request permissions:', error);
     return false;
   }
 };
@@ -111,15 +114,25 @@ export const syncRunsFromHealthKit = async (
     }
 
     // Query HealthKit for running workouts
-    const workouts = await Healthkit.queryWorkouts({
-      from: startDate,
-      to: now,
-      energyUnit: 'kcal',
-      distanceUnit: 'm',
-    });
+    console.log('[HealthKit] Querying workouts from', startDate.toISOString(), 'to', now.toISOString(), '(daysBack:', daysBack, ', incremental:', incremental, ')');
+    
+    let workouts;
+    try {
+      workouts = await Healthkit.queryWorkouts({
+        from: startDate,
+        to: now,
+        energyUnit: 'kcal',
+        distanceUnit: 'm',
+      });
+    } catch (queryError) {
+      console.error('[HealthKit] queryWorkouts threw error:', queryError);
+      throw queryError;
+    }
 
-    console.log('HealthKit workouts found:', workouts?.length || 0);
-    console.log('Workout details:', workouts);
+    console.log('[HealthKit] Workouts found:', workouts?.length || 0);
+    if (workouts && workouts.length > 0) {
+      console.log('[HealthKit] First workout sample:', JSON.stringify(workouts[0]));
+    }
 
     if (!workouts || workouts.length === 0) {
       return result;
@@ -237,7 +250,7 @@ export const syncRunsFromHealthKit = async (
 // Clear all synced health runs and re-import
 export const clearAndResyncFromHealthKit = async (
   distanceUnit: 'miles' | 'km' = 'miles',
-  daysBack: number = 30
+  daysBack: number = 365
 ): Promise<HealthSyncResult> => {
   // Delete all runs that were synced from Apple Health
   await runQuery(

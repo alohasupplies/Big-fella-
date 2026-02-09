@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { spacing, fontSize, fontWeight, borderRadius } from '../../theme/spacing';
@@ -17,18 +17,30 @@ export const StreakCalendar: React.FC<StreakCalendarProps> = ({
 }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [runs, setRuns] = useState<Run[]>([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    loadRuns();
-  }, [currentDate]);
+    let cancelled = false;
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth() + 1;
 
-  const loadRuns = async () => {
-    const monthRuns = await getRunsForMonth(
-      currentDate.getFullYear(),
-      currentDate.getMonth() + 1
-    );
-    setRuns(monthRuns);
-  };
+    console.log(`[StreakCalendar] Loading month: ${year}-${month}, currentDate=${currentDate.toISOString()}`);
+    setLoading(true);
+    getRunsForMonth(year, month).then((monthRuns) => {
+      console.log(`[StreakCalendar] Got ${monthRuns.length} runs for ${year}-${month}, cancelled=${cancelled}`);
+      if (!cancelled) {
+        setRuns(monthRuns);
+        setLoading(false);
+      }
+    }).catch((err) => {
+      console.error(`[StreakCalendar] Error loading ${year}-${month}:`, err);
+      if (!cancelled) {
+        setLoading(false);
+      }
+    });
+
+    return () => { cancelled = true; };
+  }, [currentDate]);
 
   const getDaysInMonth = (date: Date): number => {
     return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
@@ -67,46 +79,68 @@ export const StreakCalendar: React.FC<StreakCalendarProps> = ({
   const renderDays = () => {
     const daysInMonth = getDaysInMonth(currentDate);
     const firstDay = getFirstDayOfMonth(currentDate);
-    const days: React.ReactNode[] = [];
+    const cells: { day: number | null }[] = [];
 
     // Add empty cells for days before the first of the month
     for (let i = 0; i < firstDay; i++) {
-      days.push(<View key={`empty-${i}`} style={styles.dayCell} />);
+      cells.push({ day: null });
     }
 
     // Add cells for each day
+    for (let day = 1; day <= daysInMonth; day++) {
+      cells.push({ day });
+    }
+
+    // Pad remaining cells to complete the last row
+    while (cells.length % 7 !== 0) {
+      cells.push({ day: null });
+    }
+
     const today = new Date();
     const isCurrentMonth =
       today.getFullYear() === currentDate.getFullYear() &&
       today.getMonth() === currentDate.getMonth();
 
-    for (let day = 1; day <= daysInMonth; day++) {
-      const isToday = isCurrentMonth && today.getDate() === day;
-      const dayRuns = getRunsForDay(day);
-      const hasRun = dayRuns.length > 0;
+    // Render rows of 7
+    const rows: React.ReactNode[] = [];
+    for (let i = 0; i < cells.length; i += 7) {
+      const rowCells = cells.slice(i, i + 7).map((cell, idx) => {
+        if (cell.day === null) {
+          return <View key={`empty-${i + idx}`} style={styles.dayCell} />;
+        }
+        const day = cell.day;
+        const isToday = isCurrentMonth && today.getDate() === day;
+        const dayRuns = getRunsForDay(day);
+        const hasRun = dayRuns.length > 0;
 
-      days.push(
-        <TouchableOpacity
-          key={day}
-          style={[
-            styles.dayCell,
-            { backgroundColor: getDayColor(day) },
-            isToday && styles.todayCell,
-          ]}
-          onPress={() => {
-            const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-            onDayPress?.(dateStr, dayRuns);
-          }}
-        >
-          <Text style={[styles.dayText, hasRun && styles.dayTextWithRun]}>
-            {day}
-          </Text>
-          {hasRun && <View style={styles.runIndicator} />}
-        </TouchableOpacity>
+        return (
+          <TouchableOpacity
+            key={day}
+            style={[
+              styles.dayCell,
+              { backgroundColor: getDayColor(day) },
+              isToday && styles.todayCell,
+            ]}
+            onPress={() => {
+              const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+              onDayPress?.(dateStr, dayRuns);
+            }}
+          >
+            <Text style={[styles.dayText, hasRun && styles.dayTextWithRun]}>
+              {day}
+            </Text>
+            {hasRun && <View style={styles.runIndicator} />}
+          </TouchableOpacity>
+        );
+      });
+      rows.push(
+        <View key={`row-${i}`} style={styles.row}>
+          {rowCells}
+        </View>
       );
     }
 
-    return days;
+    return rows;
   };
 
   const monthNames = [
@@ -148,7 +182,13 @@ export const StreakCalendar: React.FC<StreakCalendarProps> = ({
       </View>
 
       {/* Calendar Grid */}
-      <View style={styles.grid}>{renderDays()}</View>
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="small" color={colors.primary} />
+        </View>
+      ) : (
+        <View style={styles.grid}>{renderDays()}</View>
+      )}
 
       {/* Legend */}
       <View style={styles.legend}>
@@ -211,12 +251,18 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.medium,
     color: colors.textSecondary,
   },
+  loadingContainer: {
+    height: 200,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   grid: {
+  },
+  row: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
   },
   dayCell: {
-    width: `${100 / 7}%`,
+    flex: 1,
     aspectRatio: 1,
     alignItems: 'center',
     justifyContent: 'center',
