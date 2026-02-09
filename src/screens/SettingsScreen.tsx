@@ -260,7 +260,7 @@ const SettingsScreen: React.FC = () => {
                   if (value) {
                     setSyncing(true);
                     try {
-                      const result = await syncRunsFromHealthKit(settings.distanceUnit);
+                      const result = await syncRunsFromHealthKit(settings.distanceUnit, 365);
                       setLastSync(new Date().toISOString());
                       Alert.alert(
                         'Sync Complete',
@@ -286,7 +286,7 @@ const SettingsScreen: React.FC = () => {
                   onPress={async () => {
                     setSyncing(true);
                     try {
-                      const result = await syncRunsFromHealthKit(settings.distanceUnit);
+                      const result = await syncRunsFromHealthKit(settings.distanceUnit, 365);
                       setLastSync(new Date().toISOString());
                       Alert.alert(
                         'Sync Complete',
@@ -309,7 +309,7 @@ const SettingsScreen: React.FC = () => {
                           ? 'Syncing...'
                           : lastSync
                             ? `Last synced ${new Date(lastSync).toLocaleDateString()}`
-                            : 'Pull runs from the last 30 days'}
+                            : 'Pull runs from the last year'}
                       </Text>
                     </View>
                   </View>
@@ -330,7 +330,7 @@ const SettingsScreen: React.FC = () => {
                           onPress: async () => {
                             setSyncing(true);
                             try {
-                              const result = await clearAndResyncFromHealthKit(settings.distanceUnit);
+                              const result = await clearAndResyncFromHealthKit(settings.distanceUnit, 365);
                               setLastSync(new Date().toISOString());
                               Alert.alert(
                                 'Re-sync Complete',

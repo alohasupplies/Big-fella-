@@ -30,15 +30,18 @@ export const requestHealthKitPermissions = async (): Promise<boolean> => {
 
   try {
     const isAvailable = await Healthkit.isHealthDataAvailable();
+    console.log('[HealthKit] isHealthDataAvailable:', isAvailable);
     if (!isAvailable) return false;
 
+    console.log('[HealthKit] Requesting authorization with read:', [HKWorkoutTypeIdentifier]);
     // Request authorization for workout data
     await Healthkit.requestAuthorization([HKWorkoutTypeIdentifier], []);
+    console.log('[HealthKit] Authorization request completed successfully');
     
     // For this version, assume authorization was granted if no error was thrown
     return true;
   } catch (error) {
-    console.error('Failed to request HealthKit permissions:', error);
+    console.error('[HealthKit] Failed to request permissions:', error);
     return false;
   }
 };
@@ -84,7 +87,9 @@ export interface HealthSyncResult {
 export const syncRunsFromHealthKit = async (
   distanceUnit: 'miles' | 'km' = 'miles',
   daysBack: number = 30,
-  incremental: boolean = false
+  incremental: boolean = false,
+  fromDate?: Date,
+  toDate?: Date
 ): Promise<HealthSyncResult> => {
   if (!isHealthKitAvailable()) {
     return { imported: 0, skipped: 0, errors: 0 };
@@ -93,11 +98,11 @@ export const syncRunsFromHealthKit = async (
   const result: HealthSyncResult = { imported: 0, skipped: 0, errors: 0 };
 
   try {
-    const now = new Date();
-    let startDate = new Date(now.getTime() - daysBack * 24 * 60 * 60 * 1000);
+    const now = toDate || new Date();
+    let startDate = fromDate || new Date(now.getTime() - daysBack * 24 * 60 * 60 * 1000);
 
     // For incremental syncs, only query from last sync time (with a small overlap buffer)
-    if (incremental) {
+    if (incremental && !fromDate) {
       const lastSync = await getLastSyncTime();
       if (lastSync) {
         const lastSyncDate = new Date(lastSync);
@@ -111,15 +116,25 @@ export const syncRunsFromHealthKit = async (
     }
 
     // Query HealthKit for running workouts
-    const workouts = await Healthkit.queryWorkouts({
-      from: startDate,
-      to: now,
-      energyUnit: 'kcal',
-      distanceUnit: 'm',
-    });
+    console.log('[HealthKit] Querying workouts from', startDate.toISOString(), 'to', now.toISOString(), '(daysBack:', daysBack, ', incremental:', incremental, ')');
+    
+    let workouts;
+    try {
+      workouts = await Healthkit.queryWorkouts({
+        from: startDate,
+        to: now,
+        energyUnit: 'kcal',
+        distanceUnit: 'm',
+      });
+    } catch (queryError) {
+      console.error('[HealthKit] queryWorkouts threw error:', queryError);
+      throw queryError;
+    }
 
-    console.log('HealthKit workouts found:', workouts?.length || 0);
-    console.log('Workout details:', workouts);
+    console.log('[HealthKit] Workouts found:', workouts?.length || 0);
+    if (workouts && workouts.length > 0) {
+      console.log('[HealthKit] First workout sample:', JSON.stringify(workouts[0]));
+    }
 
     if (!workouts || workouts.length === 0) {
       return result;
@@ -234,10 +249,27 @@ export const syncRunsFromHealthKit = async (
   return result;
 };
 
+// Sync a specific month from HealthKit (for on-demand calendar backfill)
+export const syncMonthFromHealthKit = async (
+  year: number,
+  month: number,
+  distanceUnit: 'miles' | 'km' = 'miles'
+): Promise<HealthSyncResult> => {
+  if (!isHealthKitAvailable()) {
+    return { imported: 0, skipped: 0, errors: 0 };
+  }
+
+  const from = new Date(year, month - 1, 1);
+  const to = new Date(year, month, 0, 23, 59, 59, 999);
+
+  // Reuse the main sync logic with explicit date range
+  return syncRunsFromHealthKit(distanceUnit, 0, false, from, to);
+};
+
 // Clear all synced health runs and re-import
 export const clearAndResyncFromHealthKit = async (
   distanceUnit: 'miles' | 'km' = 'miles',
-  daysBack: number = 30
+  daysBack: number = 365
 ): Promise<HealthSyncResult> => {
   // Delete all runs that were synced from Apple Health
   await runQuery(

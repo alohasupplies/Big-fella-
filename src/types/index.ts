@@ -267,7 +267,7 @@ export type RootStackParamList = {
   LogRun: { runId?: string };
   ExerciseDetail: { exerciseLibraryId: string };
   WorkoutDetail: { workoutId: string };
-  RunDetail: { runId: string };
+  RunDetail: { runId: string; run: Run };
   ExerciseSearch: {};
   ChallengeDetail: { challengeId: string };
   CreateChallenge: undefined;

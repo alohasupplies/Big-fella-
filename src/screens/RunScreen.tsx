@@ -90,7 +90,7 @@ const RunScreen: React.FC = () => {
 
   const handleDayPress = (date: string, dayRuns: Run[]) => {
     if (dayRuns.length > 0) {
-      navigation.navigate('RunDetail', { runId: dayRuns[0].id });
+      navigation.navigate('RunDetail', { runId: dayRuns[0].id, run: dayRuns[0] });
     } else {
       // Option to log a run for this date
       Alert.alert(
@@ -216,7 +216,7 @@ const RunScreen: React.FC = () => {
           runs.map((run) => (
             <TouchableOpacity
               key={run.id}
-              onPress={() => navigation.navigate('RunDetail', { runId: run.id })}
+              onPress={() => navigation.navigate('RunDetail', { runId: run.id, run })}
             >
               <Card variant="outlined" style={styles.runCard}>
                 <View style={styles.runHeader}>

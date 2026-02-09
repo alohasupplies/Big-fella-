@@ -46,19 +46,25 @@ export const getRecentRuns = async (limit: number = 10): Promise<Run[]> => {
 
 // Get runs by date range
 export const getRunsByDateRange = async (startDate: string, endDate: string): Promise<Run[]> => {
-  return getAll<Run>(
+  console.log(`[Calendar] getRunsByDateRange: ${startDate} to ${endDate}`);
+  const results = await getAll<Run>(
     'SELECT * FROM runs WHERE date >= ? AND date <= ? ORDER BY date DESC',
     [startDate, endDate]
   );
+  console.log(`[Calendar] getRunsByDateRange: returned ${results.length} runs, dates: ${results.map(r => r.date).join(', ')}`);
+  return results;
 };
 
 // Get runs for a specific month (for calendar)
 export const getRunsForMonth = async (year: number, month: number): Promise<Run[]> => {
   const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
   const lastDay = new Date(year, month, 0).getDate();
-  const endDate = `${year}-${String(month).padStart(2, '0')}-${lastDay}`;
+  const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
-  return getRunsByDateRange(startDate, endDate);
+  console.log(`[Calendar] getRunsForMonth: year=${year}, month=${month}, range=${startDate} to ${endDate}`);
+  const runs = await getRunsByDateRange(startDate, endDate);
+  console.log(`[Calendar] getRunsForMonth: found ${runs.length} runs for ${year}-${month}`);
+  return runs;
 };
 
 // Get weekly stats

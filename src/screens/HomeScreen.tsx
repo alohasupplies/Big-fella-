@@ -209,7 +209,7 @@ const HomeScreen: React.FC = () => {
                 if (isWorkout(item)) {
                   navigation.navigate('WorkoutDetail', { workoutId: item.id });
                 } else {
-                  navigation.navigate('RunDetail', { runId: item.id });
+                  navigation.navigate('RunDetail', { runId: item.id, run: item as Run });
                 }
               }}
             >

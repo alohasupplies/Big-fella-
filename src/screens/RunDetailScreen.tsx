@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,7 @@ import { spacing, fontSize, fontWeight, borderRadius } from '../theme/spacing';
 import { Card, Button } from '../components/common';
 import { RootStackParamList, Run } from '../types';
 import { useSettings } from '../context/SettingsContext';
-import { getRunById, deleteRun, formatPace, formatDuration } from '../services/runService';
+import { deleteRun, formatPace, formatDuration } from '../services/runService';
 import { parseLocalDate } from '../utils/date';
 
 type RouteProps = RouteProp<RootStackParamList, 'RunDetail'>;
@@ -22,25 +22,7 @@ const RunDetailScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute<RouteProps>();
   const { settings } = useSettings();
-  const { runId } = route.params;
-
-  const [run, setRun] = useState<Run | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadRun();
-  }, [runId]);
-
-  const loadRun = async () => {
-    try {
-      const data = await getRunById(runId);
-      setRun(data);
-    } catch (error) {
-      console.error('Failed to load run:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { runId, run } = route.params;
 
   const handleDelete = () => {
     Alert.alert(
@@ -59,14 +41,6 @@ const RunDetailScreen: React.FC = () => {
       ]
     );
   };
-
-  if (loading || !run) {
-    return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Loading...</Text>
-      </View>
-    );
-  }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -189,15 +163,6 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: spacing.md,
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loadingText: {
-    fontSize: fontSize.md,
-    color: colors.textSecondary,
   },
   headerCard: {
     marginBottom: spacing.lg,
