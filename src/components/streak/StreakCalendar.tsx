@@ -1,12 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { spacing, fontSize, fontWeight, borderRadius } from '../../theme/spacing';
 import { Run } from '../../types';
-import { getRunsForMonth } from '../../services/runService';
-import { syncMonthFromHealthKit, isHealthKitAvailable } from '../../services/healthService';
-import { useSettings } from '../../context/SettingsContext';
+import { getRunsByDateRange } from '../../services/runService';
 
 interface StreakCalendarProps {
   onDayPress?: (date: string, runs: Run[]) => void;
@@ -17,60 +15,34 @@ export const StreakCalendar: React.FC<StreakCalendarProps> = ({
   onDayPress,
   currentStreak,
 }) => {
-  const { settings } = useSettings();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [runs, setRuns] = useState<Run[]>([]);
-  const [loading, setLoading] = useState(false);
-  const backfilledMonths = useRef<Set<string>>(new Set());
+  const [allRuns, setAllRuns] = useState<Run[]>([]);
+  const loadedRangeRef = useRef<{ start: string; end: string } | null>(null);
 
+  // Load a wide range of runs once so month navigation is instant
   useEffect(() => {
-    let cancelled = false;
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth() + 1;
-    const monthKey = `${year}-${month}`;
+    const loadRuns = async (centerDate: Date) => {
+      const start = new Date(centerDate.getFullYear(), centerDate.getMonth() - 11, 1);
+      const end = new Date(centerDate.getFullYear(), centerDate.getMonth() + 2, 0);
+      const startStr = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-01`;
+      const endStr = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`;
 
-    setLoading(true);
-    getRunsForMonth(year, month).then(async (monthRuns) => {
-      if (cancelled) return;
-
-      // If no local runs and HealthKit is enabled, try backfilling this month
+      // Skip if this range is already loaded
       if (
-        monthRuns.length === 0 &&
-        settings.healthSyncEnabled &&
-        isHealthKitAvailable() &&
-        !backfilledMonths.current.has(monthKey)
+        loadedRangeRef.current &&
+        startStr >= loadedRangeRef.current.start &&
+        endStr <= loadedRangeRef.current.end
       ) {
-        backfilledMonths.current.add(monthKey);
-        try {
-          const syncResult = await syncMonthFromHealthKit(year, month, settings.distanceUnit);
-          if (cancelled) return;
-          if (syncResult.imported > 0) {
-            // Re-fetch after importing
-            const updatedRuns = await getRunsForMonth(year, month);
-            if (!cancelled) {
-              setRuns(updatedRuns);
-              setLoading(false);
-            }
-            return;
-          }
-        } catch (err) {
-          // Backfill failed, just show empty month
-        }
+        return;
       }
 
-      if (!cancelled) {
-        setRuns(monthRuns);
-        setLoading(false);
-      }
-    }).catch((err) => {
-      console.error(`[StreakCalendar] Error loading ${year}-${month}:`, err);
-      if (!cancelled) {
-        setLoading(false);
-      }
-    });
+      const runs = await getRunsByDateRange(startStr, endStr);
+      setAllRuns(runs);
+      loadedRangeRef.current = { start: startStr, end: endStr };
+    };
 
-    return () => { cancelled = true; };
-  }, [currentDate, settings.healthSyncEnabled, settings.distanceUnit]);
+    loadRuns(currentDate);
+  }, [currentDate]);
 
   const getDaysInMonth = (date: Date): number => {
     return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
@@ -80,9 +52,10 @@ export const StreakCalendar: React.FC<StreakCalendarProps> = ({
     return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
   };
 
+  // Filter cached runs for a specific day - synchronous, instant
   const getRunsForDay = (day: number): Run[] => {
     const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    return runs.filter((run) => run.date === dateStr);
+    return allRuns.filter((run) => run.date === dateStr);
   };
 
   const getDayColor = (day: number): string => {
@@ -212,13 +185,7 @@ export const StreakCalendar: React.FC<StreakCalendarProps> = ({
       </View>
 
       {/* Calendar Grid */}
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color={colors.primary} />
-        </View>
-      ) : (
-        <View style={styles.grid}>{renderDays()}</View>
-      )}
+      <View style={styles.grid}>{renderDays()}</View>
 
       {/* Legend */}
       <View style={styles.legend}>
@@ -280,11 +247,6 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
     fontWeight: fontWeight.medium,
     color: colors.textSecondary,
-  },
-  loadingContainer: {
-    height: 200,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   grid: {
   },
