@@ -247,31 +247,48 @@ const SettingsScreen: React.FC = () => {
                 value={settings.healthSyncEnabled}
                 onValueChange={async (value) => {
                   if (value) {
-                    const granted = await requestHealthKitPermissions();
-                    if (!granted) {
+                    // Show explanation before requesting HealthKit access
+                    await new Promise<void>((resolve) => {
                       Alert.alert(
-                        'Permission Required',
-                        'Please allow Big Fella Athletics to access your Health data in Settings > Privacy > Health.'
+                        'Apple Health Access',
+                        'This app will request read-only access to your workout data (running and walking activities) from Apple Health.\n\nNo data is written to Apple Health. Your health data is never shared with third parties or used for advertising. All data stays on your device.',
+                        [
+                          { text: 'Cancel', style: 'cancel', onPress: () => resolve() },
+                          {
+                            text: 'Continue',
+                            onPress: async () => {
+                              const granted = await requestHealthKitPermissions();
+                              if (!granted) {
+                                Alert.alert(
+                                  'Permission Required',
+                                  'Please allow access to your Health data in Settings > Privacy > Health.'
+                                );
+                                resolve();
+                                return;
+                              }
+                              await updateSetting('healthSyncEnabled', true);
+                              setSyncing(true);
+                              try {
+                                const result = await syncRunsFromHealthKit(settings.distanceUnit, 365);
+                                setLastSync(new Date().toISOString());
+                                Alert.alert(
+                                  'Sync Complete',
+                                  `Imported ${result.imported} run${result.imported !== 1 ? 's' : ''} from Apple Health.${result.skipped > 0 ? ` ${result.skipped} already synced.` : ''}`
+                                );
+                              } catch (error) {
+                                Alert.alert('Sync Failed', 'Could not sync runs from Apple Health.');
+                              } finally {
+                                setSyncing(false);
+                              }
+                              resolve();
+                            },
+                          },
+                        ]
                       );
-                      return;
-                    }
+                    });
+                    return;
                   }
-                  await updateSetting('healthSyncEnabled', value);
-                  if (value) {
-                    setSyncing(true);
-                    try {
-                      const result = await syncRunsFromHealthKit(settings.distanceUnit, 365);
-                      setLastSync(new Date().toISOString());
-                      Alert.alert(
-                        'Sync Complete',
-                        `Imported ${result.imported} run${result.imported !== 1 ? 's' : ''} from Apple Health.${result.skipped > 0 ? ` ${result.skipped} already synced.` : ''}`
-                      );
-                    } catch (error) {
-                      Alert.alert('Sync Failed', 'Could not sync runs from Apple Health.');
-                    } finally {
-                      setSyncing(false);
-                    }
-                  }
+                  await updateSetting('healthSyncEnabled', false);
                 }}
                 trackColor={{ false: colors.border, true: colors.primaryLight }}
                 thumbColor={settings.healthSyncEnabled ? colors.primary : colors.textDisabled}
@@ -547,19 +564,54 @@ const SettingsScreen: React.FC = () => {
         </View>
       </Card>
 
-      {/* Apple Health Usage */}
-      <Text style={styles.sectionTitle}>Why Apple Health</Text>
+      {/* HealthKit Integration */}
+      <Text style={styles.sectionTitle}>HealthKit Integration</Text>
       <Card variant="outlined" style={styles.card}>
         <View style={styles.infoRow}>
           <Ionicons name="heart-circle" size={24} color={colors.primary} />
           <View style={styles.infoContent}>
-            <Text style={styles.infoTitle}>Apple Health Keeps Runs in Sync</Text>
+            <Text style={styles.infoTitle}>How We Use Apple Health</Text>
             <Text style={styles.infoDescription}>
-              We use Apple Health to import your running workouts so your activity stays in one
-              place. Access is optional and only used to read run data you choose to sync. All data
-              stays on your device.
+              This app integrates with Apple HealthKit to import your running and walking workouts
+              so your activity stays in one place.
             </Text>
           </View>
+        </View>
+
+        <View style={styles.divider} />
+
+        <View style={styles.healthDetailRow}>
+          <Ionicons name="download-outline" size={20} color={colors.textSecondary} />
+          <Text style={styles.healthDetailText}>
+            <Text style={styles.healthDetailBold}>Data Read: </Text>
+            Workout data (running and walking activities, distance, duration, and dates).
+          </Text>
+        </View>
+
+        <View style={styles.healthDetailRow}>
+          <Ionicons name="close-circle-outline" size={20} color={colors.textSecondary} />
+          <Text style={styles.healthDetailText}>
+            <Text style={styles.healthDetailBold}>Data Written: </Text>
+            None. This app does not write any data to Apple Health.
+          </Text>
+        </View>
+
+        <View style={styles.healthDetailRow}>
+          <Ionicons name="lock-closed-outline" size={20} color={colors.textSecondary} />
+          <Text style={styles.healthDetailText}>
+            <Text style={styles.healthDetailBold}>Privacy: </Text>
+            Your health data is never shared with third parties, used for advertising, or
+            transmitted off your device. All data stays local.
+          </Text>
+        </View>
+
+        <View style={styles.healthDetailRow}>
+          <Ionicons name="toggle-outline" size={20} color={colors.textSecondary} />
+          <Text style={styles.healthDetailText}>
+            <Text style={styles.healthDetailBold}>Optional: </Text>
+            HealthKit access is entirely optional. The app works fully without it. You can
+            enable or disable syncing at any time in the Apple Health section above.
+          </Text>
         </View>
       </Card>
     </ScrollView>
@@ -687,6 +739,22 @@ const styles = StyleSheet.create({
   debugButtonText: {
     flex: 1,
     marginLeft: spacing.md,
+  },
+  healthDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: spacing.sm,
+    gap: spacing.sm,
+  },
+  healthDetailText: {
+    flex: 1,
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+    lineHeight: 20,
+  },
+  healthDetailBold: {
+    fontWeight: fontWeight.semibold,
+    color: colors.textPrimary,
   },
 });
 
