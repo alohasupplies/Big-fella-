@@ -378,6 +378,57 @@ const SettingsScreen: React.FC = () => {
               </>
             )}
           </Card>
+
+          {/* HealthKit Integration - disclosure directly below sync controls */}
+          <Text style={styles.sectionTitle}>HealthKit Integration</Text>
+          <Card variant="outlined" style={styles.card}>
+            <View style={styles.infoRow}>
+              <Ionicons name="heart-circle" size={24} color={colors.primary} />
+              <View style={styles.infoContent}>
+                <Text style={styles.infoTitle}>How We Use Apple Health</Text>
+                <Text style={styles.infoDescription}>
+                  This app uses Apple HealthKit to import your running and walking workouts
+                  so your activity stays in one place.
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.divider} />
+
+            <View style={styles.healthDetailRow}>
+              <Ionicons name="download-outline" size={20} color={colors.textSecondary} />
+              <Text style={styles.healthDetailText}>
+                <Text style={styles.healthDetailBold}>Data Read: </Text>
+                Workout data (running and walking activities, distance, duration, and dates).
+              </Text>
+            </View>
+
+            <View style={styles.healthDetailRow}>
+              <Ionicons name="close-circle-outline" size={20} color={colors.textSecondary} />
+              <Text style={styles.healthDetailText}>
+                <Text style={styles.healthDetailBold}>Data Written: </Text>
+                None. This app does not write any data to Apple Health.
+              </Text>
+            </View>
+
+            <View style={styles.healthDetailRow}>
+              <Ionicons name="lock-closed-outline" size={20} color={colors.textSecondary} />
+              <Text style={styles.healthDetailText}>
+                <Text style={styles.healthDetailBold}>Privacy: </Text>
+                Your health data is never shared with third parties, used for advertising, or
+                transmitted off your device. All data stays local.
+              </Text>
+            </View>
+
+            <View style={styles.healthDetailRow}>
+              <Ionicons name="toggle-outline" size={20} color={colors.textSecondary} />
+              <Text style={styles.healthDetailText}>
+                <Text style={styles.healthDetailBold}>Optional: </Text>
+                HealthKit access is entirely optional. The app works fully without it. You can
+                enable or disable syncing at any time.
+              </Text>
+            </View>
+          </Card>
         </>
       )}
 
@@ -564,56 +615,6 @@ const SettingsScreen: React.FC = () => {
         </View>
       </Card>
 
-      {/* HealthKit Integration */}
-      <Text style={styles.sectionTitle}>HealthKit Integration</Text>
-      <Card variant="outlined" style={styles.card}>
-        <View style={styles.infoRow}>
-          <Ionicons name="heart-circle" size={24} color={colors.primary} />
-          <View style={styles.infoContent}>
-            <Text style={styles.infoTitle}>How We Use Apple Health</Text>
-            <Text style={styles.infoDescription}>
-              This app integrates with Apple HealthKit to import your running and walking workouts
-              so your activity stays in one place.
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.divider} />
-
-        <View style={styles.healthDetailRow}>
-          <Ionicons name="download-outline" size={20} color={colors.textSecondary} />
-          <Text style={styles.healthDetailText}>
-            <Text style={styles.healthDetailBold}>Data Read: </Text>
-            Workout data (running and walking activities, distance, duration, and dates).
-          </Text>
-        </View>
-
-        <View style={styles.healthDetailRow}>
-          <Ionicons name="close-circle-outline" size={20} color={colors.textSecondary} />
-          <Text style={styles.healthDetailText}>
-            <Text style={styles.healthDetailBold}>Data Written: </Text>
-            None. This app does not write any data to Apple Health.
-          </Text>
-        </View>
-
-        <View style={styles.healthDetailRow}>
-          <Ionicons name="lock-closed-outline" size={20} color={colors.textSecondary} />
-          <Text style={styles.healthDetailText}>
-            <Text style={styles.healthDetailBold}>Privacy: </Text>
-            Your health data is never shared with third parties, used for advertising, or
-            transmitted off your device. All data stays local.
-          </Text>
-        </View>
-
-        <View style={styles.healthDetailRow}>
-          <Ionicons name="toggle-outline" size={20} color={colors.textSecondary} />
-          <Text style={styles.healthDetailText}>
-            <Text style={styles.healthDetailBold}>Optional: </Text>
-            HealthKit access is entirely optional. The app works fully without it. You can
-            enable or disable syncing at any time in the Apple Health section above.
-          </Text>
-        </View>
-      </Card>
     </ScrollView>
   );
 };
