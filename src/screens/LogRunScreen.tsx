@@ -29,7 +29,6 @@ const RUN_TYPES: { value: RunType; label: string; icon: string }[] = [
   { value: 'long', label: 'Long', icon: 'map-outline' },
   { value: 'recovery', label: 'Recovery', icon: 'heart-outline' },
   { value: 'race', label: 'Race', icon: 'trophy-outline' },
-  { value: 'walk', label: 'Walk', icon: 'footsteps-outline' },
 ];
 
 const LogRunScreen: React.FC = () => {

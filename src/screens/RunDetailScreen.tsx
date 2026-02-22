@@ -59,7 +59,7 @@ const RunDetailScreen: React.FC = () => {
           {run.runType && (
             <View style={styles.runTypeBadge}>
               <Text style={styles.runTypeText}>
-                {run.runType === 'walk' ? 'Walk' : `${run.runType.charAt(0).toUpperCase() + run.runType.slice(1)} Run`}
+                {`${run.runType.charAt(0).toUpperCase() + run.runType.slice(1)} Run`}
               </Text>
             </View>
           )}

@@ -1,11 +1,10 @@
 import { Platform } from 'react-native';
 import { v4 as uuidv4 } from 'uuid';
-import { Run, RunType } from '../types';
-import { runQuery, getFirst, getAll } from '../database/database';
+import { RunType } from '../types';
+import { runQuery, getFirst } from '../database/database';
 
 // HealthKit types - imported conditionally for iOS only
 let Healthkit: any = null;
-let HKQuantityTypeIdentifier: any = null;
 let HKWorkoutActivityType: any = null;
 let HKWorkoutTypeIdentifier: string | null = null;
 
@@ -13,7 +12,6 @@ if (Platform.OS === 'ios') {
   try {
     const hk = require('@kingstinct/react-native-healthkit');
     Healthkit = hk.default;
-    HKQuantityTypeIdentifier = hk.HKQuantityTypeIdentifier;
     HKWorkoutActivityType = hk.HKWorkoutActivityType;
     HKWorkoutTypeIdentifier = hk.HKWorkoutTypeIdentifier ?? 'HKWorkoutTypeIdentifier';
   } catch (e) {
@@ -145,29 +143,21 @@ export const syncRunsFromHealthKit = async (
         console.log('Processing workout:', {
           activityType: workout.workoutActivityType,
           runningType: HKWorkoutActivityType.running,
-          walkingType: HKWorkoutActivityType.walking,
           distance: workout.totalDistance
         });
         
-        // Only import running workouts
+        // Only import running workouts (skip walks entirely)
         const activityType = workout.workoutActivityType;
-        if (
-          activityType !== HKWorkoutActivityType.running &&
-          activityType !== HKWorkoutActivityType.walking
-        ) {
-          console.log('Skipping workout - not running/walking:', activityType);
+        if (activityType !== HKWorkoutActivityType.running) {
+          console.log('Skipping workout - not running:', activityType);
           continue;
         }
 
-        // Only count actual running (skip walking unless distance > 1 mile)
         // totalDistance may be a number or an object like { quantity: number, unit: string }
         const rawDistance = workout.totalDistance;
         const distanceMeters = typeof rawDistance === 'object' && rawDistance !== null
           ? rawDistance.quantity
           : (rawDistance || 0);
-        if (activityType === HKWorkoutActivityType.walking && distanceMeters < 1609) {
-          continue;
-        }
 
         const workoutId = workout.uuid || `hk_${workout.startDate}`;
 
@@ -201,9 +191,7 @@ export const syncRunsFromHealthKit = async (
           ? pace
           : pace * 1.60934; // convert min/km to min/mile for classification
 
-        const runType: RunType = activityType === HKWorkoutActivityType.walking
-          ? 'walk'
-          : classifyRunType(paceMinPerMile, durationSeconds);
+        const runType: RunType = classifyRunType(paceMinPerMile, durationSeconds);
         const runDate = `${startTime.getFullYear()}-${String(startTime.getMonth() + 1).padStart(2, '0')}-${String(startTime.getDate()).padStart(2, '0')}`;
 
         // Insert the run into the database

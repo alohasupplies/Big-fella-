@@ -207,6 +207,10 @@ export const initDatabase = async (): Promise<void> => {
 
   // Initialize badges if empty
   await initializeBadges(database);
+
+  // Migration: remove any previously imported walk entries
+  await executeSql(database, `DELETE FROM synced_health_runs WHERE runId IN (SELECT id FROM runs WHERE runType = 'walk')`);
+  await executeSql(database, `DELETE FROM runs WHERE runType = 'walk'`);
 };
 
 const initializeDefaultSettings = async (database: SQLite.WebSQLDatabase) => {
