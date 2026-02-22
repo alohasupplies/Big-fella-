@@ -42,6 +42,7 @@ const ProgressScreen: React.FC = () => {
   // Run stats
   const [weeklyDistance, setWeeklyDistance] = useState(0);
   const [lifetimeDistance, setLifetimeDistance] = useState(0);
+  const [lifetimeRuns, setLifetimeRuns] = useState(0);
   const [currentStreak, setCurrentStreak] = useState(0);
   const [distanceData, setDistanceData] = useState<number[]>([0, 0, 0, 0, 0, 0, 0]);
 
@@ -60,6 +61,7 @@ const ProgressScreen: React.FC = () => {
 
       const lifetimeRunStats = await getLifetimeRunStats();
       setLifetimeDistance(lifetimeRunStats.totalDistance);
+      setLifetimeRuns(lifetimeRunStats.totalRuns);
 
       const streak = await calculateCurrentStreak(
         settings.streakMinDistance,
@@ -308,7 +310,7 @@ const ProgressScreen: React.FC = () => {
               <Text style={styles.statLabel}>Current Streak</Text>
             </Card>
             <Card variant="outlined" style={styles.statCard}>
-              <Ionicons name="flame" size={32} color={colors.primary} />
+              <Text style={styles.statValue}>{lifetimeRuns}</Text>
               <Text style={styles.statLabel}>Days Running</Text>
             </Card>
           </View>
