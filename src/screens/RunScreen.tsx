@@ -26,7 +26,7 @@ import {
   formatDuration,
   useStreakFreeze,
 } from '../services/runService';
-import { useHealthSync } from '../hooks/useHealthSync';
+import { useHealthSyncContext } from '../context/HealthSyncContext';
 import { parseLocalDate } from '../utils/date';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -44,7 +44,7 @@ const RunScreen: React.FC = () => {
     longestStreak: 0,
   });
   const [refreshing, setRefreshing] = useState(false);
-  const [syncing, setSyncing] = useState(false);
+  const { syncVersion, isSyncing, triggerSync } = useHealthSyncContext();
 
   const loadData = useCallback(async () => {
     try {
@@ -64,21 +64,10 @@ const RunScreen: React.FC = () => {
     }
   }, [settings.streakMinDistance, settings.streakMinDuration]);
 
-  // Dynamic health sync: listens for HealthKit changes, app foregrounding, etc.
-  const { triggerSync } = useHealthSync({
-    onSyncStart: () => setSyncing(true),
-    onSyncComplete: () => {
-      setSyncing(false);
-      loadData();
-    },
-    onSyncError: () => setSyncing(false),
-  });
-
   useFocusEffect(
     useCallback(() => {
-      triggerSync();
       loadData();
-    }, [triggerSync, loadData])
+    }, [loadData, syncVersion])
   );
 
   const onRefresh = async () => {
@@ -150,7 +139,7 @@ const RunScreen: React.FC = () => {
       />
 
       {/* Apple Health Sync Indicator */}
-      {settings.healthSyncEnabled && syncing && (
+      {settings.healthSyncEnabled && isSyncing && (
         <View style={styles.syncBanner}>
           <ActivityIndicator size="small" color={colors.primary} />
           <Text style={styles.syncText}>Syncing from Apple Health...</Text>

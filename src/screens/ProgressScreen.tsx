@@ -14,6 +14,7 @@ import { colors } from '../theme/colors';
 import { spacing, fontSize, fontWeight, borderRadius } from '../theme/spacing';
 import { Card } from '../components/common';
 import { useSettings } from '../context/SettingsContext';
+import { useHealthSyncContext } from '../context/HealthSyncContext';
 import {
   getWeeklyVolume,
   getTotalLifetimeVolume,
@@ -31,6 +32,7 @@ const screenWidth = Dimensions.get('window').width;
 
 const ProgressScreen: React.FC = () => {
   const { settings } = useSettings();
+  const { syncVersion } = useHealthSyncContext();
   const [activeTab, setActiveTab] = useState<'lift' | 'run' | 'combined'>('combined');
   const [refreshing, setRefreshing] = useState(false);
 
@@ -111,7 +113,7 @@ const ProgressScreen: React.FC = () => {
   useFocusEffect(
     useCallback(() => {
       loadData();
-    }, [settings.streakMinDistance, settings.streakMinDuration])
+    }, [settings.streakMinDistance, settings.streakMinDuration, syncVersion])
   );
 
   const onRefresh = async () => {

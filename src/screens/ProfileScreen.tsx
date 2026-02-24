@@ -14,6 +14,7 @@ import { spacing, fontSize, fontWeight, borderRadius } from '../theme/spacing';
 import { Card } from '../components/common';
 import { RootStackParamList } from '../types';
 import { useSettings } from '../context/SettingsContext';
+import { useHealthSyncContext } from '../context/HealthSyncContext';
 import { getTotalWorkoutCount, getTotalLifetimeVolume } from '../services/workoutService';
 import { getLifetimeRunStats } from '../services/runService';
 
@@ -22,6 +23,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { settings } = useSettings();
+  const { syncVersion } = useHealthSyncContext();
 
   const [totalWorkouts, setTotalWorkouts] = useState(0);
   const [totalVolume, setTotalVolume] = useState(0);
@@ -47,7 +49,7 @@ const ProfileScreen: React.FC = () => {
   useFocusEffect(
     useCallback(() => {
       loadData();
-    }, [])
+    }, [syncVersion])
   );
 
   const formatVolume = (volume: number): string => {

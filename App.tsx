@@ -12,6 +12,7 @@ if (__DEV__) {
 
 import { initDatabase } from './src/database/database';
 import { SettingsProvider } from './src/context/SettingsContext';
+import { HealthSyncProvider } from './src/context/HealthSyncContext';
 import MainNavigator from './src/navigation/MainNavigator';
 import { colors } from './src/theme/colors';
 
@@ -60,10 +61,12 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <SettingsProvider>
-        <NavigationContainer>
-          <MainNavigator />
-          <StatusBar style="auto" />
-        </NavigationContainer>
+        <HealthSyncProvider>
+          <NavigationContainer>
+            <MainNavigator />
+            <StatusBar style="auto" />
+          </NavigationContainer>
+        </HealthSyncProvider>
       </SettingsProvider>
     </SafeAreaProvider>
   );

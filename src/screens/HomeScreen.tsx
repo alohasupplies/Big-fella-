@@ -28,12 +28,14 @@ import {
   getWeeklyRunStats,
 } from '../services/runService';
 import { parseLocalDate } from '../utils/date';
+import { useHealthSyncContext } from '../context/HealthSyncContext';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const HomeScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { settings } = useSettings();
+  const { syncVersion, triggerSync } = useHealthSyncContext();
 
   const [currentStreak, setCurrentStreak] = useState(0);
   const [weeklyVolume, setWeeklyVolume] = useState(0);
@@ -86,11 +88,12 @@ const HomeScreen: React.FC = () => {
   useFocusEffect(
     useCallback(() => {
       loadData();
-    }, [settings.streakMinDistance, settings.streakMinDuration])
+    }, [settings.streakMinDistance, settings.streakMinDuration, syncVersion])
   );
 
   const onRefresh = async () => {
     setRefreshing(true);
+    triggerSync();
     await loadData();
     setRefreshing(false);
   };
