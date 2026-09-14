@@ -19,7 +19,7 @@
 	<key>CFBundlePackageType</key>
 	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0.0</string>
+	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFBundleURLTypes</key>
@@ -32,7 +32,9 @@
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>1.1</string>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSAppTransportSecurity</key>
@@ -45,7 +47,21 @@
 	<key>NSHealthShareUsageDescription</key>
 	<string>Big Fella Athletics reads your running workouts from Apple Health to automatically log your runs and maintain your streak.</string>
 	<key>NSHealthUpdateUsageDescription</key>
-	<string>Big Fella Athletics does not write data to Apple Health.</string>
+	<string>Big Fella Athletics saves completed runs and routes to Apple Health when Health Sync is enabled.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Big Fella Athletics records your route while a run is active, including when your phone is locked or the app is in the background.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Big Fella Athletics uses your location to map and measure your runs.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Choose a photo to create a shareable run recap.</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
+	<key>NSSupportsLiveActivitiesFrequentUpdates</key>
+	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>SplashScreen</string>
 	<key>UIRequiredDeviceCapabilities</key>

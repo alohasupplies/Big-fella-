@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { Run, RunType, Streak } from '../types';
+import { Run, RunType, Streak, RoutePoint } from '../types';
 import { getAll, getFirst, runQuery } from '../database/database';
 
 // Create a new run
@@ -28,6 +28,58 @@ export const createRun = async (
   // Update streak after logging a run
   await updateStreak(runDate);
 
+  return (await getRunById(runId)) as Run;
+};
+
+export const createRecordedRun = async (
+  distance: number,
+  duration: number,
+  routeCoordinates: RoutePoint[],
+  elevationGain: number = 0,
+  runType: RunType = 'easy'
+): Promise<Run> => {
+  const runId = uuidv4();
+  const now = new Date().toISOString();
+  const runDate = now.split('T')[0];
+  const pace = distance > 0 ? duration / 60 / distance : 0;
+
+  await runQuery(
+    `INSERT INTO runs
+      (id, date, distance, duration, pace, runType, routeCoordinates, elevationGain, createdAt, updatedAt)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [runId, runDate, distance, duration, pace, runType, JSON.stringify(routeCoordinates), elevationGain, now, now]
+  );
+  await updateStreak(runDate);
+  return (await getRunById(runId)) as Run;
+};
+
+export const parseRoute = (run: Run): RoutePoint[] => {
+  if (!run.routeCoordinates) return [];
+  try {
+    const points = JSON.parse(run.routeCoordinates);
+    return Array.isArray(points) ? points : [];
+  } catch {
+    return [];
+  }
+};
+
+export const updateRunPhoto = async (runId: string, photoUri?: string): Promise<void> => {
+  await runQuery('UPDATE runs SET photoUri = ?, updatedAt = ? WHERE id = ?', [
+    photoUri || null,
+    new Date().toISOString(),
+    runId,
+  ]);
+};
+
+export const updateRecordedRunDetails = async (
+  runId: string,
+  routeName: string,
+  runType: RunType
+): Promise<Run> => {
+  await runQuery(
+    'UPDATE runs SET routeName = ?, runType = ?, updatedAt = ? WHERE id = ?',
+    [routeName.trim() || null, runType, new Date().toISOString(), runId]
+  );
   return (await getRunById(runId)) as Run;
 };
 

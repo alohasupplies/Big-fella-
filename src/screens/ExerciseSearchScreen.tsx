@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { spacing, fontSize, fontWeight, borderRadius, touchTarget } from '../theme/spacing';
@@ -15,6 +16,7 @@ import { RootStackParamList, ExerciseLibraryItem, MuscleGroup, Equipment } from 
 import { getAll, getFavoriteExercises, addFavoriteExercise, removeFavoriteExercise } from '../database/database';
 
 type RouteProps = RouteProp<RootStackParamList, 'ExerciseSearch'>;
+type NavigationProps = NativeStackNavigationProp<RootStackParamList>;
 
 const MUSCLE_GROUPS: { value: MuscleGroup; label: string }[] = [
   { value: 'chest', label: 'Chest' },
@@ -31,7 +33,7 @@ const MUSCLE_GROUPS: { value: MuscleGroup; label: string }[] = [
 ];
 
 const ExerciseSearchScreen: React.FC = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProps>();
   const route = useRoute<RouteProps>();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -148,7 +150,7 @@ const ExerciseSearchScreen: React.FC = () => {
 
   const handleDone = () => {
     if (selectedExercises.length === 0) return;
-    navigation.navigate('LogWorkout', { selectedExercises } as any);
+    navigation.navigate('LogWorkout', { selectedExercises });
   };
 
   const getMuscleGroupLabel = (muscleGroup: string): string => {

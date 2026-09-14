@@ -20,6 +20,8 @@ import RunDetailScreen from '../screens/RunDetailScreen';
 import ExerciseSearchScreen from '../screens/ExerciseSearchScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import DataExportScreen from '../screens/DataExportScreen';
+import RecordRunScreen from '../screens/RecordRunScreen';
+import ShareRunScreen from '../screens/ShareRunScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<TabParamList>();
@@ -157,6 +159,7 @@ const MainNavigator = () => {
           presentation: 'modal',
         }}
       />
+      <Stack.Screen name="RecordRun" component={RecordRunScreen} options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen
         name="ExerciseDetail"
         component={ExerciseDetailScreen}
@@ -178,6 +181,7 @@ const MainNavigator = () => {
           title: 'Run Details',
         }}
       />
+      <Stack.Screen name="ShareRun" component={ShareRunScreen} options={{ title: 'Share Run', presentation: 'modal' }} />
       <Stack.Screen
         name="ExerciseSearch"
         component={ExerciseSearchScreen}

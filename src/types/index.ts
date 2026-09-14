@@ -112,8 +112,18 @@ export interface Run {
   runType: RunType;
   weather?: string;
   notes?: string;
+  routeCoordinates?: string;
+  elevationGain?: number;
+  photoUri?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface RoutePoint {
+  latitude: number;
+  longitude: number;
+  altitude?: number | null;
+  timestamp?: number;
 }
 
 export type RunType = 'easy' | 'tempo' | 'intervals' | 'long' | 'recovery' | 'race';
@@ -201,6 +211,7 @@ export interface AppSettings {
   monthlyFreezes: number;
   healthSyncEnabled: boolean;
   restTimerDefault: number; // seconds
+  testRunEnabled: boolean;
 }
 
 // Analytics Types
@@ -265,9 +276,11 @@ export type RootStackParamList = {
   Main: undefined;
   LogWorkout: { workoutId?: string; selectedExercises?: ExerciseLibraryItem[]; templateId?: string };
   LogRun: { runId?: string };
+  RecordRun: undefined;
   ExerciseDetail: { exerciseLibraryId: string };
   WorkoutDetail: { workoutId: string };
   RunDetail: { runId: string; run: Run };
+  ShareRun: { run: Run };
   ExerciseSearch: {};
   ChallengeDetail: { challengeId: string };
   CreateChallenge: undefined;

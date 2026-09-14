@@ -15,6 +15,7 @@ import { SettingsProvider } from './src/context/SettingsContext';
 import { HealthSyncProvider } from './src/context/HealthSyncContext';
 import MainNavigator from './src/navigation/MainNavigator';
 import { colors } from './src/theme/colors';
+import { reconcileRunTracking } from './src/services/runTrackingService';
 
 export default function App() {
   const [isDbReady, setIsDbReady] = useState(false);
@@ -29,6 +30,7 @@ export default function App() {
           return;
         }
         await initDatabase();
+        await reconcileRunTracking();
         setIsDbReady(true);
       } catch (error) {
         console.error('Failed to initialize database:', error);

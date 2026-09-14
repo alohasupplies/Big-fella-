@@ -21,6 +21,7 @@ const defaultSettings: AppSettings = {
   monthlyFreezes: 2,
   healthSyncEnabled: false,
   restTimerDefault: 90,
+  testRunEnabled: false,
 };
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -68,6 +69,9 @@ export const SettingsProvider: React.FC<{ children: ReactNode }> = ({ children }
             break;
           case 'healthSyncEnabled':
             loadedSettings.healthSyncEnabled = value === 'true';
+            break;
+          case 'testRunEnabled':
+            loadedSettings.testRunEnabled = value === 'true';
             break;
           case 'restTimerDefault':
             loadedSettings.restTimerDefault = parseFloat(value);

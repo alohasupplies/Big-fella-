@@ -1,12 +1,14 @@
 import { Platform } from 'react-native';
 import { v4 as uuidv4 } from 'uuid';
-import { RunType } from '../types';
+import { Run, RunType, RoutePoint } from '../types';
 import { runQuery, getFirst } from '../database/database';
 
 // HealthKit types - imported conditionally for iOS only
 let Healthkit: any = null;
 let HKWorkoutActivityType: any = null;
 let HKWorkoutTypeIdentifier: string | null = null;
+let HKWorkoutRouteTypeIdentifier: string | null = null;
+let HKQuantityTypeIdentifier: any = null;
 
 if (Platform.OS === 'ios') {
   try {
@@ -14,6 +16,8 @@ if (Platform.OS === 'ios') {
     Healthkit = hk.default;
     HKWorkoutActivityType = hk.HKWorkoutActivityType;
     HKWorkoutTypeIdentifier = hk.HKWorkoutTypeIdentifier ?? 'HKWorkoutTypeIdentifier';
+    HKWorkoutRouteTypeIdentifier = hk.HKWorkoutRouteTypeIdentifier ?? 'HKWorkoutRouteTypeIdentifier';
+    HKQuantityTypeIdentifier = hk.HKQuantityTypeIdentifier;
   } catch (e) {
     console.warn('HealthKit not available:', e);
   }
@@ -31,15 +35,55 @@ export const requestHealthKitPermissions = async (): Promise<boolean> => {
     console.log('[HealthKit] isHealthDataAvailable:', isAvailable);
     if (!isAvailable) return false;
 
-    console.log('[HealthKit] Requesting authorization with read:', [HKWorkoutTypeIdentifier]);
-    // Request authorization for workout data
-    await Healthkit.requestAuthorization([HKWorkoutTypeIdentifier], []);
+    const read = [HKWorkoutTypeIdentifier, HKWorkoutRouteTypeIdentifier].filter(Boolean);
+    const write = [HKWorkoutTypeIdentifier, HKWorkoutRouteTypeIdentifier, HKQuantityTypeIdentifier?.distanceWalkingRunning].filter(Boolean);
+    console.log('[HealthKit] Requesting read/write authorization');
+    await Healthkit.requestAuthorization(read, write);
     console.log('[HealthKit] Authorization request completed successfully');
     
     // For this version, assume authorization was granted if no error was thrown
     return true;
   } catch (error) {
     console.error('[HealthKit] Failed to request permissions:', error);
+    return false;
+  }
+};
+
+export const saveRunToHealthKit = async (
+  run: Run,
+  route: RoutePoint[],
+  distanceUnit: 'miles' | 'km'
+): Promise<boolean> => {
+  if (!isHealthKitAvailable()) return false;
+  try {
+    const authorized = await requestHealthKitPermissions();
+    if (!authorized) return false;
+    const end = new Date(run.createdAt);
+    const start = new Date(end.getTime() - run.duration * 1000);
+    const distanceMeters = distanceUnit === 'miles' ? run.distance * 1609.344 : run.distance * 1000;
+    const workoutUUID = await Healthkit.saveWorkoutSample(
+      HKWorkoutActivityType.running,
+      [],
+      start,
+      { end, totals: { distance: distanceMeters }, metadata: { HKExternalUUID: run.id } }
+    );
+    if (!workoutUUID) return false;
+    if (route.length > 1) {
+      await Healthkit.saveWorkoutRoute(workoutUUID, route.map((point, index) => ({
+        latitude: point.latitude,
+        longitude: point.longitude,
+        altitude: point.altitude || 0,
+        horizontalAccuracy: 10,
+        verticalAccuracy: 10,
+        course: -1,
+        speed: -1,
+        timestamp: point.timestamp || start.getTime() + (index / Math.max(1, route.length - 1)) * run.duration * 1000,
+      })));
+    }
+    await markWorkoutSynced(workoutUUID, run.id);
+    return true;
+  } catch (error) {
+    console.error('[HealthKit] Failed to save recorded run:', error);
     return false;
   }
 };

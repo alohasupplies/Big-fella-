@@ -3,9 +3,17 @@ PODS:
   - DoubleConversion (1.1.6)
   - EXApplication (5.8.4):
     - ExpoModulesCore
+  - EXAV (13.10.6):
+    - ExpoModulesCore
+    - ReactCommon/turbomodule/core
   - EXConstants (15.4.6):
     - ExpoModulesCore
   - EXFont (11.10.3):
+    - ExpoModulesCore
+  - EXImageLoader (4.6.0):
+    - ExpoModulesCore
+    - React-Core
+  - EXLocation (16.5.5):
     - ExpoModulesCore
   - EXNotifications (0.27.8):
     - ExpoModulesCore
@@ -14,6 +22,8 @@ PODS:
   - ExpoFileSystem (16.0.9):
     - ExpoModulesCore
   - ExpoHaptics (12.8.1):
+    - ExpoModulesCore
+  - ExpoImagePicker (14.7.1):
     - ExpoModulesCore
   - ExpoKeepAwake (12.8.2):
     - ExpoModulesCore
@@ -31,6 +41,9 @@ PODS:
     - sqlite3 (~> 3.42.0)
     - sqlite3/fts (~> 3.42.0)
     - sqlite3/fts5 (~> 3.42.0)
+  - EXTaskManager (11.7.3):
+    - ExpoModulesCore
+    - UMAppLoader
   - FBLazyVector (0.73.2)
   - FBReactNativeSpec (0.73.2):
     - RCT-Folly (= 2022.05.16.00)
@@ -920,7 +933,11 @@ PODS:
     - React-debug
   - react-native-get-random-values (1.9.0):
     - React-Core
+  - react-native-maps (1.10.0):
+    - React-Core
   - react-native-safe-area-context (4.8.2):
+    - React-Core
+  - react-native-view-shot (3.8.0):
     - React-Core
   - React-nativeconfig (0.73.2)
   - React-NativeModulesApple (0.73.2):
@@ -1103,22 +1120,28 @@ PODS:
     - sqlite3/common
   - sqlite3/fts5 (3.42.0):
     - sqlite3/common
+  - UMAppLoader (4.5.1)
   - Yoga (1.14.0)
 
 DEPENDENCIES:
   - boost (from `../node_modules/react-native/third-party-podspecs/boost.podspec`)
   - DoubleConversion (from `../node_modules/react-native/third-party-podspecs/DoubleConversion.podspec`)
   - EXApplication (from `../node_modules/expo-application/ios`)
+  - EXAV (from `../node_modules/expo-av/ios`)
   - EXConstants (from `../node_modules/expo-constants/ios`)
   - EXFont (from `../node_modules/expo-font/ios`)
+  - EXImageLoader (from `../node_modules/expo-image-loader/ios`)
+  - EXLocation (from `../node_modules/expo-location/ios`)
   - EXNotifications (from `../node_modules/expo-notifications/ios`)
   - Expo (from `../node_modules/expo`)
   - ExpoFileSystem (from `../node_modules/expo-file-system/ios`)
   - ExpoHaptics (from `../node_modules/expo-haptics/ios`)
+  - ExpoImagePicker (from `../node_modules/expo-image-picker/ios`)
   - ExpoKeepAwake (from `../node_modules/expo-keep-awake/ios`)
   - ExpoModulesCore (from `../node_modules/expo-modules-core`)
   - ExpoSharing (from `../node_modules/expo-sharing/ios`)
   - ExpoSQLite (from `../node_modules/expo-sqlite/ios`)
+  - EXTaskManager (from `../node_modules/expo-task-manager/ios`)
   - FBLazyVector (from `../node_modules/react-native/Libraries/FBLazyVector`)
   - FBReactNativeSpec (from `../node_modules/react-native/React/FBReactNativeSpec`)
   - glog (from `../node_modules/react-native/third-party-podspecs/glog.podspec`)
@@ -1149,7 +1172,9 @@ DEPENDENCIES:
   - React-logger (from `../node_modules/react-native/ReactCommon/logger`)
   - React-Mapbuffer (from `../node_modules/react-native/ReactCommon`)
   - react-native-get-random-values (from `../node_modules/react-native-get-random-values`)
+  - react-native-maps (from `../node_modules/react-native-maps`)
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
+  - react-native-view-shot (from `../node_modules/react-native-view-shot`)
   - React-nativeconfig (from `../node_modules/react-native/ReactCommon`)
   - React-NativeModulesApple (from `../node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios`)
   - React-perflogger (from `../node_modules/react-native/ReactCommon/reactperflogger`)
@@ -1172,6 +1197,7 @@ DEPENDENCIES:
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
   - RNScreens (from `../node_modules/react-native-screens`)
   - RNSVG (from `../node_modules/react-native-svg`)
+  - UMAppLoader (from `../node_modules/unimodules-app-loader/ios`)
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
 SPEC REPOS:
@@ -1188,10 +1214,16 @@ EXTERNAL SOURCES:
     :podspec: "../node_modules/react-native/third-party-podspecs/DoubleConversion.podspec"
   EXApplication:
     :path: "../node_modules/expo-application/ios"
+  EXAV:
+    :path: "../node_modules/expo-av/ios"
   EXConstants:
     :path: "../node_modules/expo-constants/ios"
   EXFont:
     :path: "../node_modules/expo-font/ios"
+  EXImageLoader:
+    :path: "../node_modules/expo-image-loader/ios"
+  EXLocation:
+    :path: "../node_modules/expo-location/ios"
   EXNotifications:
     :path: "../node_modules/expo-notifications/ios"
   Expo:
@@ -1200,6 +1232,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-file-system/ios"
   ExpoHaptics:
     :path: "../node_modules/expo-haptics/ios"
+  ExpoImagePicker:
+    :path: "../node_modules/expo-image-picker/ios"
   ExpoKeepAwake:
     :path: "../node_modules/expo-keep-awake/ios"
   ExpoModulesCore:
@@ -1208,6 +1242,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-sharing/ios"
   ExpoSQLite:
     :path: "../node_modules/expo-sqlite/ios"
+  EXTaskManager:
+    :path: "../node_modules/expo-task-manager/ios"
   FBLazyVector:
     :path: "../node_modules/react-native/Libraries/FBLazyVector"
   FBReactNativeSpec:
@@ -1263,8 +1299,12 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon"
   react-native-get-random-values:
     :path: "../node_modules/react-native-get-random-values"
+  react-native-maps:
+    :path: "../node_modules/react-native-maps"
   react-native-safe-area-context:
     :path: "../node_modules/react-native-safe-area-context"
+  react-native-view-shot:
+    :path: "../node_modules/react-native-view-shot"
   React-nativeconfig:
     :path: "../node_modules/react-native/ReactCommon"
   React-NativeModulesApple:
@@ -1309,6 +1349,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-screens"
   RNSVG:
     :path: "../node_modules/react-native-svg"
+  UMAppLoader:
+    :path: "../node_modules/unimodules-app-loader/ios"
   Yoga:
     :path: "../node_modules/react-native/ReactCommon/yoga"
 
@@ -1316,16 +1358,21 @@ SPEC CHECKSUMS:
   boost: d3f49c53809116a5d38da093a8aa78bf551aed09
   DoubleConversion: fea03f2699887d960129cc54bba7e52542b6f953
   EXApplication: d62cd534090692cbf538ea15f69f829b517a40b1
+  EXAV: e160fec51bf6bc41c3b6f7e4c72ea9fd36860cd6
   EXConstants: c82ef9280044accc91fb6082047afdc9a408f61a
   EXFont: 64e653a110eee050ad80dfcd676c4bada0a1ff92
+  EXImageLoader: ba2506b443b9656e93167c104406a2c265924823
+  EXLocation: a8037ebc0dc56b2fc5aa20eef8cb52fb6e29c002
   EXNotifications: 9fd42ca3c5998ae93a2ac869ed9a47467c433219
   Expo: 1b33cb8ab60cff9abf805ed6020af3d1846e457c
   ExpoFileSystem: df58e1eb2a4d6f1006a1ca70bddfbbf63e52fa4f
   ExpoHaptics: c91902e436f3fb0e07aa19acc118018089fa90de
+  ExpoImagePicker: d06822d74f1f0e7fe7cb070ece0fff6e678fa3eb
   ExpoKeepAwake: 3b8cf8533b9212500565a1e41fb080fc5af29918
   ExpoModulesCore: 43ebd65adf2c0e6ffb0de24a41f8f7de12829331
   ExpoSharing: 2537ddc516138bb6d8eb536ff7055e370485f4d1
   ExpoSQLite: 009fb92b2fec9b76158918287a5d644c9e2bb5a1
+  EXTaskManager: 8c5683c2fb543cf2baa77bab4ad130b7e3829c4a
   FBLazyVector: fbc4957d9aa695250b55d879c1d86f79d7e69ab4
   FBReactNativeSpec: 86de768f89901ef6ed3207cd686362189d64ac88
   fmt: ff9d55029c625d3757ed641535fd4a75fedc7ce9
@@ -1355,7 +1402,9 @@ SPEC CHECKSUMS:
   React-logger: b42a493ae72922d8d6a497038359240ffd457119
   React-Mapbuffer: 2cd1af67c3754dfb934948448125f0e051586db7
   react-native-get-random-values: 419569b6ed3d15bfb9b6781b2f2e058f8e8d2698
+  react-native-maps: 57f0acd0e7224dbc3772bc554a5257060a7bb93c
   react-native-safe-area-context: bf9d9d58f0f6726d4a6257088044c2595017579d
+  react-native-view-shot: d1a701eb0719c6dccbd20b4bb43b1069f304cb70
   React-nativeconfig: d753fbbc8cecc8ae413d615599ac378bbf6999bb
   React-NativeModulesApple: 4cc974c51ebc4911173bbe5d5897ad55ebc8b90f
   React-perflogger: 29efe63b7ef5fbaaa50ef6eaa92482f98a24b97e
@@ -1380,8 +1429,9 @@ SPEC CHECKSUMS:
   RNSVG: 6d5ed33b6635ed6d6ecb50744dcf127580c39ed5
   SocketRocket: f32cd54efbe0f095c4d7594881e52619cfe80b17
   sqlite3: f163dbbb7aa3339ad8fc622782c2d9d7b72f7e9c
+  UMAppLoader: 79d3ee6aa2447a1fe2e8b0d07acf2de106e55b58
   Yoga: 13c8ef87792450193e117976337b8527b49e8c03
 
-PODFILE CHECKSUM: 50f95de10f88e2affc3a4d7de3add03da71a7c66
+PODFILE CHECKSUM: 3df4382aecc2047ae962051cdc496c0048ce7a58
 
 COCOAPODS: 1.16.2

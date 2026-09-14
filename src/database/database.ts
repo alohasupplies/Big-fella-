@@ -199,6 +199,22 @@ export const initDatabase = async (): Promise<void> => {
 
   await executeSqlBatch(database, createTableStatements);
 
+  // Add map/share fields without disturbing existing activity history.
+  const runColumns = await executeSql(database, 'PRAGMA table_info(runs)');
+  const existingRunColumns = new Set<string>();
+  for (let i = 0; i < runColumns.rows.length; i++) {
+    existingRunColumns.add(runColumns.rows.item(i).name);
+  }
+  if (!existingRunColumns.has('routeCoordinates')) {
+    await executeSql(database, 'ALTER TABLE runs ADD COLUMN routeCoordinates TEXT');
+  }
+  if (!existingRunColumns.has('elevationGain')) {
+    await executeSql(database, 'ALTER TABLE runs ADD COLUMN elevationGain REAL');
+  }
+  if (!existingRunColumns.has('photoUri')) {
+    await executeSql(database, 'ALTER TABLE runs ADD COLUMN photoUri TEXT');
+  }
+
   // Initialize default settings if not exists
   await initializeDefaultSettings(database);
 
