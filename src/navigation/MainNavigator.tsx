@@ -2,6 +2,7 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors } from '../theme/colors';
 import { RootStackParamList, TabParamList } from '../types';
@@ -21,6 +22,7 @@ import ExerciseSearchScreen from '../screens/ExerciseSearchScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import DataExportScreen from '../screens/DataExportScreen';
 import RecordRunScreen from '../screens/RecordRunScreen';
+import IndoorRunScreen from '../screens/IndoorRunScreen';
 import ShareRunScreen from '../screens/ShareRunScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -53,6 +55,8 @@ const getTabBarIcon = (routeName: string, focused: boolean, color: string, size:
 };
 
 const TabNavigator = () => {
+  const insets = useSafeAreaInsets();
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -63,10 +67,10 @@ const TabNavigator = () => {
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
-          paddingBottom: 5,
-          paddingTop: 5,
+          paddingBottom: Math.max(insets.bottom, 8),
+          paddingTop: 6,
           paddingHorizontal: 12,
-          height: 60,
+          height: 58 + Math.max(insets.bottom, 8),
         },
         tabBarLabelStyle: {
           fontSize: 12,
@@ -160,6 +164,7 @@ const MainNavigator = () => {
         }}
       />
       <Stack.Screen name="RecordRun" component={RecordRunScreen} options={{ headerShown: false, gestureEnabled: false }} />
+      <Stack.Screen name="IndoorRun" component={IndoorRunScreen} options={{ headerShown: false, gestureEnabled: false }} />
       <Stack.Screen
         name="ExerciseDetail"
         component={ExerciseDetailScreen}

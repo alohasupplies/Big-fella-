@@ -80,7 +80,6 @@ const RunScreen: React.FC = () => {
         settings.distanceUnit === 'miles' ? (isLong ? 15 : 3.12) : (isLong ? 24.14 : 5.02),
         isLong ? 7770 : 1648,
         isLong ? longRoute : standardRoute,
-        isLong ? 83 : 18,
         isLong ? 'long' : 'tempo'
       );
       navigation.navigate('RunDetail', { runId: run.id, run });
@@ -100,12 +99,17 @@ const RunScreen: React.FC = () => {
         <View><Text style={styles.weekValue}>{formatDuration(week.totalDuration)}</Text><Text style={styles.label}>TIME</Text></View>
         <View><Text style={styles.weekValue}>{week.averagePace ? formatPace(week.averagePace) : '--:--'}</Text><Text style={styles.label}>AVG PACE</Text></View>
       </View>
-      <TouchableOpacity style={styles.recordButton} onPress={() => navigation.navigate('RecordRun')}>
+      <TouchableOpacity style={styles.recordButton} onPress={() => navigation.navigate(activeRun?.mode === 'indoor' ? 'IndoorRun' : 'RecordRun')}>
         <View style={styles.recordIcon}><Ionicons name="navigate" size={24} color={colors.white} /></View>
         <View style={styles.recordCopy}><Text style={styles.recordTitle}>Start a run</Text><Text style={styles.recordSub}>GPS ready · Apple Maps</Text></View>
         <Ionicons name="chevron-forward" size={22} color={colors.white} />
       </TouchableOpacity>
-      {activeRun && <TouchableOpacity style={styles.activeRunButton} onPress={() => navigation.navigate('RecordRun')}>
+      <TouchableOpacity style={styles.testButton} onPress={() => navigation.navigate(activeRun && activeRun.mode !== 'indoor' ? 'RecordRun' : 'IndoorRun')}>
+        <Ionicons name="fitness-outline" size={24} color={colors.white} />
+        <View style={styles.testCopy}><Text style={styles.testTitle}>Indoor run</Text><Text style={styles.testSub}>Treadmill timer · Add distance at the finish</Text></View>
+        <Ionicons name="chevron-forward" size={20} color={colors.white} />
+      </TouchableOpacity>
+      {activeRun && <TouchableOpacity style={styles.activeRunButton} onPress={() => navigation.navigate(activeRun.mode === 'indoor' ? 'IndoorRun' : 'RecordRun')}>
         <View style={styles.activePulse} />
         <View style={styles.recordCopy}><Text style={styles.recordTitle}>{activeRun.status === 'paused' ? 'Run paused' : 'Run in progress'}</Text><Text style={styles.recordSub}>{formatDuration(elapsedForSession(activeRun))} saved · Tap to resume</Text></View>
         <Ionicons name="chevron-forward" size={22} color={colors.white} />
@@ -128,7 +132,7 @@ const RunScreen: React.FC = () => {
         const points = parseRoute(run);
         return (
           <TouchableOpacity key={run.id} style={styles.activity} activeOpacity={0.88} onPress={() => navigation.navigate('RunDetail', { runId: run.id, run })}>
-            <View style={styles.mapPreview}><RunMap points={points} interactive={false} /></View>
+            {run.isIndoor ? <View style={[styles.mapPreview, { alignItems: 'center', justifyContent: 'center' }]}><Ionicons name="fitness-outline" size={36} color={colors.primary} /><Text style={styles.testTitle}>Indoor run</Text></View> : <View style={styles.mapPreview}><RunMap points={points} interactive={false} /></View>}
             <View style={styles.activityBody}>
               <View style={styles.dateRow}><Text style={styles.date}>{parseLocalDate(run.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</Text><Ionicons name="chevron-forward" size={18} color={colors.textSecondary} /></View>
               <Text style={styles.activityTitle}>{run.routeName || `${run.runType.charAt(0).toUpperCase() + run.runType.slice(1)} run`}</Text>

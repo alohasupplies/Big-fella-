@@ -40,6 +40,7 @@ const RecordRunScreen: React.FC = () => {
     const refresh = async () => {
       const active = await readActiveRun();
       if (!mounted || !active) return;
+      if (active.mode === 'indoor') { navigation.replace('IndoorRun'); return; }
       setSession(active);
       setPoints(active.points);
       setElapsed(elapsedForSession(active));
@@ -94,11 +95,15 @@ const RecordRunScreen: React.FC = () => {
         Alert.alert('Not enough activity', 'Record a little more distance before finishing.');
         return;
       }
-      const elevations = finalPoints.map(p => p.altitude).filter((v): v is number => typeof v === 'number');
-      const elevationGain = elevations.slice(1).reduce((sum, value, i) => sum + Math.max(0, value - elevations[i]), 0);
-      const run = await createRecordedRun(finalDistance, finalElapsed, finalPoints, elevationGain);
+      const run = await createRecordedRun(finalDistance, finalElapsed, finalPoints);
       if (settings.healthSyncEnabled) {
-        await saveRunToHealthKit(run, finalPoints, settings.distanceUnit);
+        const synced = await saveRunToHealthKit(run, finalPoints, settings.distanceUnit);
+        if (!synced) {
+          Alert.alert(
+            'Run saved — Apple Health needs attention',
+            'Your run is safe in Athleticcs, but it could not be added to Apple Health. In the Health app, allow Athleticcs to write Workouts and Walking + Running Distance, then try your next run.'
+          );
+        }
       }
       await clearActiveRun();
       navigation.replace('RunDetail', { runId: run.id, run });

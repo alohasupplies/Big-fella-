@@ -1,435 +1,88 @@
-import React, { useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  RefreshControl,
-  Dimensions,
-} from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { LineChart } from 'react-native-chart-kit';
-import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../theme/colors';
-import { spacing, fontSize, fontWeight, borderRadius } from '../theme/spacing';
-import { Card } from '../components/common';
 import { useSettings } from '../context/SettingsContext';
 import { useHealthSyncContext } from '../context/HealthSyncContext';
-import {
-  getWeeklyVolume,
-  getTotalLifetimeVolume,
-  getWorkoutsByDateRange,
-  calculateWorkoutVolume,
-} from '../services/workoutService';
-import {
-  getWeeklyRunStats,
-  getLifetimeRunStats,
-  calculateCurrentStreak,
-  getRunsByDateRange,
-} from '../services/runService';
+import { getWorkoutsByDateRange, calculateWorkoutVolume } from '../services/workoutService';
+import { getRunsByDateRange, formatDuration } from '../services/runService';
+import { Metric, compact, localDateKey, trainingStyles as ui } from '../components/TrainingUI';
 
-const screenWidth = Dimensions.get('window').width;
-
+type Week = { label: string; distance: number; volume: number; runs: number; lifts: number; time: number };
+const emptyWeek = (): Week => ({ label: '', distance: 0, volume: 0, runs: 0, lifts: 0, time: 0 });
 const ProgressScreen: React.FC = () => {
   const { settings } = useSettings();
   const { syncVersion } = useHealthSyncContext();
-  const [activeTab, setActiveTab] = useState<'lift' | 'run' | 'combined'>('combined');
+  const [tab, setTab] = useState<'all' | 'run' | 'lift'>('all');
+  const [weeks, setWeeks] = useState<Week[]>([]);
+  const [days, setDays] = useState<{ date: string; count: number }[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-
-  // Lift stats
-  const [weeklyVolume, setWeeklyVolume] = useState(0);
-  const [lifetimeVolume, setLifetimeVolume] = useState(0);
-  const [volumeData, setVolumeData] = useState<number[]>([0, 0, 0, 0, 0, 0, 0]);
-
-  // Run stats
-  const [weeklyDistance, setWeeklyDistance] = useState(0);
-  const [lifetimeDistance, setLifetimeDistance] = useState(0);
-  const [lifetimeRuns, setLifetimeRuns] = useState(0);
-  const [currentStreak, setCurrentStreak] = useState(0);
-  const [distanceData, setDistanceData] = useState<number[]>([0, 0, 0, 0, 0, 0, 0]);
-
-  const loadData = async () => {
+  const [error, setError] = useState(false);
+  const load = useCallback(async () => {
     try {
-      // Load lift data
-      const weekVol = await getWeeklyVolume();
-      setWeeklyVolume(weekVol);
-
-      const lifetime = await getTotalLifetimeVolume();
-      setLifetimeVolume(lifetime);
-
-      // Load run data
-      const runStats = await getWeeklyRunStats();
-      setWeeklyDistance(runStats.totalDistance);
-
-      const lifetimeRunStats = await getLifetimeRunStats();
-      setLifetimeDistance(lifetimeRunStats.totalDistance);
-      setLifetimeRuns(lifetimeRunStats.totalRuns);
-
-      const streak = await calculateCurrentStreak(
-        settings.streakMinDistance,
-        settings.streakMinDuration
-      );
-      setCurrentStreak(streak);
-
-      // Load chart data (last 7 weeks)
-      await loadChartData();
-    } catch (error) {
-      console.error('Failed to load progress data:', error);
-    }
-  };
-
-  const loadChartData = async () => {
-    const volumeWeekly: number[] = [];
-    const distanceWeekly: number[] = [];
-    const today = new Date();
-
-    for (let i = 6; i >= 0; i--) {
-      const weekEnd = new Date(today);
-      weekEnd.setDate(today.getDate() - i * 7);
-      const weekStart = new Date(weekEnd);
-      weekStart.setDate(weekEnd.getDate() - 7);
-
-      const startStr = weekStart.toISOString().split('T')[0];
-      const endStr = weekEnd.toISOString().split('T')[0];
-
-      // Get workouts for this week
-      const workouts = await getWorkoutsByDateRange(startStr, endStr);
-      const weekVolume = workouts.reduce(
-        (sum, w) => sum + calculateWorkoutVolume(w),
-        0
-      );
-      volumeWeekly.push(weekVolume / 1000); // Convert to thousands
-
-      // Get runs for this week
-      const runs = await getRunsByDateRange(startStr, endStr);
-      const weekDistance = runs.reduce((sum, r) => sum + r.distance, 0);
-      distanceWeekly.push(weekDistance);
-    }
-
-    setVolumeData(volumeWeekly);
-    setDistanceData(distanceWeekly);
-  };
-
-  useFocusEffect(
-    useCallback(() => {
-      loadData();
-    }, [settings.streakMinDistance, settings.streakMinDuration, syncVersion])
-  );
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadData();
-    setRefreshing(false);
-  };
-
-  const formatVolume = (volume: number): string => {
-    if (volume >= 1000000) {
-      return `${(volume / 1000000).toFixed(1)}M`;
-    }
-    if (volume >= 1000) {
-      return `${(volume / 1000).toFixed(1)}K`;
-    }
-    return volume.toLocaleString();
-  };
-
-  const chartConfig = {
-    backgroundColor: colors.surface,
-    backgroundGradientFrom: colors.surface,
-    backgroundGradientTo: colors.surface,
-    decimalPlaces: 1,
-    color: (opacity = 1) => `rgba(255, 107, 53, ${opacity})`,
-    labelColor: () => colors.textSecondary,
-    style: {
-      borderRadius: 16,
-    },
-    propsForDots: {
-      r: '4',
-      strokeWidth: '2',
-      stroke: colors.primary,
-    },
-  };
-
-  const weekLabels = ['6w', '5w', '4w', '3w', '2w', '1w', 'Now'];
-
-  return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const monday = new Date(today); monday.setDate(today.getDate() - (today.getDay() + 6) % 7);
+      const start = new Date(monday); start.setDate(start.getDate() - 42);
+      const [runs, workouts] = await Promise.all([
+        getRunsByDateRange(localDateKey(start), localDateKey(today)),
+        getWorkoutsByDateRange(localDateKey(start), localDateKey(today)),
+      ]);
+      const result: Week[] = [];
+      for (let i = 0; i < 7; i++) {
+        const from = new Date(start); from.setDate(start.getDate() + i * 7);
+        const to = new Date(from); to.setDate(from.getDate() + 6);
+        const a = localDateKey(from); const b = localDateKey(to);
+        const r = runs.filter(x => x.date >= a && x.date <= b);
+        const w = workouts.filter(x => x.date >= a && x.date <= b);
+        result.push({ label: i === 6 ? 'Now' : from.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), distance: r.reduce((n, x) => n + x.distance, 0), volume: w.reduce((n, x) => n + calculateWorkoutVolume(x), 0), runs: r.length, lifts: w.length, time: r.reduce((n, x) => n + x.duration, 0) });
       }
-    >
-      {/* Tab Selector */}
-      <View style={styles.tabs}>
-        {(['combined', 'lift', 'run'] as const).map((tab) => (
-          <View
-            key={tab}
-            style={[styles.tab, activeTab === tab && styles.activeTab]}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === tab && styles.activeTabText,
-              ]}
-              onPress={() => setActiveTab(tab)}
-            >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            </Text>
-          </View>
-        ))}
-      </View>
-
-      {/* Combined Stats */}
-      {activeTab === 'combined' && (
-        <>
-          <Card variant="elevated" style={styles.summaryCard}>
-            <Text style={styles.cardTitle}>This Week</Text>
-            <View style={styles.summaryRow}>
-              <View style={styles.summaryItem}>
-                <Ionicons name="barbell" size={24} color={colors.accent} />
-                <Text style={styles.summaryValue}>
-                  {formatVolume(weeklyVolume)} {settings.weightUnit}
-                </Text>
-                <Text style={styles.summaryLabel}>Volume</Text>
-              </View>
-              <View style={styles.summaryItem}>
-                <Ionicons name="walk" size={24} color={colors.primary} />
-                <Text style={styles.summaryValue}>
-                  {weeklyDistance.toFixed(1)} {settings.distanceUnit}
-                </Text>
-                <Text style={styles.summaryLabel}>Distance</Text>
-              </View>
-              <View style={styles.summaryItem}>
-                <Ionicons name="flame" size={24} color={colors.warning} />
-                <Text style={styles.summaryValue}>{currentStreak}</Text>
-                <Text style={styles.summaryLabel}>Streak</Text>
-              </View>
-            </View>
-          </Card>
-
-          <Card variant="outlined" style={styles.chartCard}>
-            <Text style={styles.chartTitle}>Weekly Volume (K {settings.weightUnit})</Text>
-            <LineChart
-              data={{
-                labels: weekLabels,
-                datasets: [{ data: volumeData.map((v) => v || 0.1) }],
-              }}
-              width={screenWidth - spacing.md * 4}
-              height={180}
-              chartConfig={{
-                ...chartConfig,
-                color: (opacity = 1) => `rgba(33, 150, 243, ${opacity})`,
-              }}
-              bezier
-              style={styles.chart}
-            />
-          </Card>
-
-          <Card variant="outlined" style={styles.chartCard}>
-            <Text style={styles.chartTitle}>Weekly Distance ({settings.distanceUnit})</Text>
-            <LineChart
-              data={{
-                labels: weekLabels,
-                datasets: [{ data: distanceData.map((d) => d || 0.1) }],
-              }}
-              width={screenWidth - spacing.md * 4}
-              height={180}
-              chartConfig={chartConfig}
-              bezier
-              style={styles.chart}
-            />
-          </Card>
-        </>
-      )}
-
-      {/* Lift Stats */}
-      {activeTab === 'lift' && (
-        <>
-          <View style={styles.statsRow}>
-            <Card variant="outlined" style={styles.statCard}>
-              <Text style={styles.statValue}>
-                {formatVolume(weeklyVolume)}
-              </Text>
-              <Text style={styles.statLabel}>
-                Weekly Volume ({settings.weightUnit})
-              </Text>
-            </Card>
-            <Card variant="outlined" style={styles.statCard}>
-              <Text style={styles.statValue}>
-                {formatVolume(lifetimeVolume)}
-              </Text>
-              <Text style={styles.statLabel}>
-                Lifetime Volume ({settings.weightUnit})
-              </Text>
-            </Card>
-          </View>
-
-          <Card variant="outlined" style={styles.chartCard}>
-            <Text style={styles.chartTitle}>7-Week Volume Trend</Text>
-            <LineChart
-              data={{
-                labels: weekLabels,
-                datasets: [{ data: volumeData.map((v) => v || 0.1) }],
-              }}
-              width={screenWidth - spacing.md * 4}
-              height={220}
-              chartConfig={{
-                ...chartConfig,
-                color: (opacity = 1) => `rgba(33, 150, 243, ${opacity})`,
-              }}
-              bezier
-              style={styles.chart}
-            />
-          </Card>
-        </>
-      )}
-
-      {/* Run Stats */}
-      {activeTab === 'run' && (
-        <>
-          <View style={styles.statsRow}>
-            <Card variant="outlined" style={styles.statCard}>
-              <Text style={styles.statValue}>
-                {weeklyDistance.toFixed(1)}
-              </Text>
-              <Text style={styles.statLabel}>
-                This Week ({settings.distanceUnit})
-              </Text>
-            </Card>
-            <Card variant="outlined" style={styles.statCard}>
-              <Text style={styles.statValue}>
-                {lifetimeDistance.toFixed(1)}
-              </Text>
-              <Text style={styles.statLabel}>
-                Lifetime ({settings.distanceUnit})
-              </Text>
-            </Card>
-          </View>
-
-          <View style={styles.statsRow}>
-            <Card variant="outlined" style={styles.statCard}>
-              <Text style={styles.statValue}>{currentStreak}</Text>
-              <Text style={styles.statLabel}>Current Streak</Text>
-            </Card>
-            <Card variant="outlined" style={styles.statCard}>
-              <Text style={styles.statValue}>{lifetimeRuns}</Text>
-              <Text style={styles.statLabel}>Days Running</Text>
-            </Card>
-          </View>
-
-          <Card variant="outlined" style={styles.chartCard}>
-            <Text style={styles.chartTitle}>7-Week Distance Trend</Text>
-            <LineChart
-              data={{
-                labels: weekLabels,
-                datasets: [{ data: distanceData.map((d) => d || 0.1) }],
-              }}
-              width={screenWidth - spacing.md * 4}
-              height={220}
-              chartConfig={chartConfig}
-              bezier
-              style={styles.chart}
-            />
-          </Card>
-        </>
-      )}
-    </ScrollView>
-  );
+      const activity = Array.from({ length: 28 }, (_, i) => {
+        const d = new Date(today); d.setDate(today.getDate() - 27 + i);
+        const key = localDateKey(d);
+        return { date: key, count: (tab !== 'lift' ? runs.filter(r => r.date === key).length : 0) + (tab !== 'run' ? workouts.filter(w => w.date === key).length : 0) };
+      });
+      setWeeks(result); setDays(activity); setError(false);
+    } catch (e) { console.error('Progress load failed', e); setError(true); }
+  }, [tab]);
+  useFocusEffect(useCallback(() => { void load(); }, [load, syncVersion]));
+  const current = weeks[6] || emptyWeek(); const previous = weeks[5] || emptyWeek();
+  const compare = (now: number, before: number) => before > 0 ? Math.round((now - before) / before * 100) + '% · this week so far vs all of last week' : now > 0 ? 'Building momentum this week' : 'Log a session to start your trend';
+  const trend = (kind: 'distance' | 'volume', title: string, unit: string) => {
+    const values = weeks.map(w => w[kind]); const max = Math.max(1, ...values);
+    return <View style={ui.card}>
+      <Text style={ui.eyebrow}>7-WEEK TREND</Text><Text style={[ui.heading, { marginTop: 8 }]}>{title}</Text>
+      <Text style={ui.copy}>{compare(current[kind], previous[kind])}</Text>
+      <View style={styles.chart}>{weeks.map((week, index) => <View key={index} style={styles.column}>
+        <Text adjustsFontSizeToFit numberOfLines={1} style={styles.barValue}>{kind === 'volume' ? compact(week[kind]) : week[kind].toFixed(1)}</Text>
+        <View style={styles.barTrack}><View style={[styles.bar, { height: week[kind] === 0 ? 0 : Math.max(3, week[kind] / max * 105), backgroundColor: index === 6 ? '#CC0100' : '#660A0A' }]} /></View>
+        <Text numberOfLines={1} adjustsFontSizeToFit style={styles.axis}>{week.label}</Text>
+      </View>)}</View><Text style={ui.label}>{unit.toUpperCase()} · MONDAY–SUNDAY</Text>
+    </View>;
+  };
+  return <ScrollView style={ui.screen} contentContainerStyle={ui.content} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} tintColor="#CC0100" onRefresh={async () => { setRefreshing(true); await load(); setRefreshing(false); }} />}>
+    <View><Text style={ui.eyebrow}>YOUR TRAINING, IN FOCUS</Text><Text style={ui.title}>See the work.{ '\n' }See the progress.</Text><Text style={ui.copy}>Running and strength, together in one training story.</Text></View>
+    <View style={styles.tabs}>{(['all', 'run', 'lift'] as const).map(t => <TouchableOpacity accessibilityRole="button" accessibilityState={{ selected: tab === t }} key={t} onPress={() => setTab(t)} style={[styles.tab, tab === t && styles.selected]}><Text style={styles.tabText}>{t === 'all' ? 'Overview' : t === 'run' ? 'Running' : 'Strength'}</Text></TouchableOpacity>)}</View>
+    {error && <Text style={ui.copy}>Couldn’t load training data. Pull down to retry.</Text>}
+    <View style={[ui.card, { backgroundColor: '#200505', borderColor: '#500B0B' }]}><Text style={ui.eyebrow}>THIS WEEK</Text><View style={[ui.row, { marginTop: 16 }]}>
+      {tab !== 'lift' && <Metric value={current.distance.toFixed(1)} label={settings.distanceUnit.toUpperCase() + ' RUN'} />}
+      {tab !== 'run' && <Metric value={compact(current.volume)} label={settings.weightUnit.toUpperCase() + ' LIFTED'} />}
+      <Metric value={String(tab === 'all' ? current.runs + current.lifts : tab === 'run' ? current.runs : current.lifts)} label="SESSIONS" />
+    </View>{tab === 'run' && <Text style={ui.copy}>Time on your feet: {formatDuration(current.time)}</Text>}</View>
+    {tab !== 'lift' && trend('distance', 'Distance adds up.', settings.distanceUnit)}
+    {tab !== 'run' && trend('volume', 'Strength in numbers.', settings.weightUnit)}
+    <View style={ui.card}><Text style={ui.eyebrow}>LAST 28 DAYS</Text><Text style={[ui.heading, { marginTop: 8 }]}>Show up. Build momentum.</Text><Text style={ui.copy}>{days.filter(d => d.count > 0).length} active days · {days.reduce((n, d) => n + d.count, 0)} sessions</Text>
+      <View style={styles.calendar}>{days.map(d => <View accessible accessibilityLabel={d.date + ': ' + d.count + ' sessions'} key={d.date} style={[styles.day, { backgroundColor: d.count > 1 ? '#CC0100' : d.count === 1 ? '#770100' : '#282828' }]}><Text style={styles.dayNumber}>{Number(d.date.slice(-2))}</Text></View>)}</View>
+      <Text style={ui.copy}>Each square is a day. Brighter red means more sessions.</Text>
+    </View>
+  </ScrollView>;
 };
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    padding: spacing.md,
-  },
-  tabs: {
-    flexDirection: 'row',
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    padding: spacing.xs,
-    marginBottom: spacing.lg,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: spacing.sm,
-    alignItems: 'center',
-    borderRadius: borderRadius.md,
-  },
-  activeTab: {
-    backgroundColor: colors.primary,
-  },
-  tabText: {
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.medium,
-    color: colors.textSecondary,
-  },
-  activeTabText: {
-    color: colors.white,
-  },
-  summaryCard: {
-    marginBottom: spacing.lg,
-  },
-  cardTitle: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.semibold,
-    color: colors.textPrimary,
-    marginBottom: spacing.md,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  summaryItem: {
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  summaryValue: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.bold,
-    color: colors.textPrimary,
-  },
-  summaryLabel: {
-    fontSize: fontSize.xs,
-    color: colors.textSecondary,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    marginBottom: spacing.md,
-  },
-  statCard: {
-    flex: 1,
-    alignItems: 'center',
-    padding: spacing.md,
-  },
-  statValue: {
-    fontSize: fontSize.xxl,
-    fontWeight: fontWeight.bold,
-    color: colors.primary,
-  },
-  statLabel: {
-    fontSize: fontSize.xs,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-    textAlign: 'center',
-  },
-  chartCard: {
-    marginBottom: spacing.lg,
-    padding: spacing.md,
-  },
-  chartTitle: {
-    fontSize: fontSize.md,
-    fontWeight: fontWeight.semibold,
-    color: colors.textPrimary,
-    marginBottom: spacing.md,
-  },
-  chart: {
-    marginLeft: -spacing.md,
-    borderRadius: borderRadius.lg,
-  },
+  tabs: { flexDirection: 'row', backgroundColor: '#171717', borderRadius: 16, padding: 5, gap: 4 },
+  tab: { flex: 1, paddingVertical: 12, borderRadius: 12, alignItems: 'center' },
+  selected: { backgroundColor: '#AA0100' }, tabText: { color: '#fff', fontWeight: '800', fontSize: 13 },
+  chart: { flexDirection: 'row', gap: 6, marginTop: 24 }, column: { flex: 1, minWidth: 0, alignItems: 'center' },
+  barValue: { color: '#ddd', fontSize: 10, fontWeight: '700' }, barTrack: { height: 112, width: '100%', justifyContent: 'flex-end', borderBottomWidth: 1, borderColor: '#444', paddingHorizontal: 4 },
+  bar: { borderTopLeftRadius: 5, borderTopRightRadius: 5 }, axis: { color: '#aaa', fontSize: 9, marginTop: 9 },
+  calendar: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginTop: 18 },
+  day: { width: '12.5%', aspectRatio: 1, borderRadius: 7, justifyContent: 'center', alignItems: 'center' }, dayNumber: { color: '#ddd', fontSize: 11 },
 });
-
 export default ProgressScreen;

@@ -208,11 +208,11 @@ export const initDatabase = async (): Promise<void> => {
   if (!existingRunColumns.has('routeCoordinates')) {
     await executeSql(database, 'ALTER TABLE runs ADD COLUMN routeCoordinates TEXT');
   }
-  if (!existingRunColumns.has('elevationGain')) {
-    await executeSql(database, 'ALTER TABLE runs ADD COLUMN elevationGain REAL');
-  }
   if (!existingRunColumns.has('photoUri')) {
     await executeSql(database, 'ALTER TABLE runs ADD COLUMN photoUri TEXT');
+  }
+  if (!existingRunColumns.has('isIndoor')) {
+    await executeSql(database, 'ALTER TABLE runs ADD COLUMN isIndoor INTEGER NOT NULL DEFAULT 0');
   }
 
   // Initialize default settings if not exists

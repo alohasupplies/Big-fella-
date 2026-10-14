@@ -41,7 +41,7 @@ struct RunLiveActivityWidget: Widget {
     VStack(spacing: 14) {
       HStack {
         Image(systemName: "figure.run").foregroundStyle(Color.red)
-        Text("BIG FELLA RUN").font(.caption.bold()).tracking(1.2)
+        Text("ATHLETICCS RUN").font(.caption.bold()).tracking(1.2)
         Spacer()
         Text(context.state.paused ? "PAUSED" : "LIVE").font(.caption.bold()).foregroundStyle(context.state.paused ? .orange : .red)
       }

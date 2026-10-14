@@ -8,6 +8,7 @@ const LOCATION_TASK = 'big-fella-active-run-location';
 const SESSION_FILE = `${FileSystem.documentDirectory}active-run.json`;
 
 export type ActiveRunSession = {
+  mode?: 'outdoor' | 'indoor';
   id: string;
   status: 'recording' | 'paused';
   startedAt: number;
@@ -39,13 +40,14 @@ const writeActiveRun = (session: ActiveRunSession) =>
   FileSystem.writeAsStringAsync(SESSION_FILE, JSON.stringify(session));
 
 const updateLiveActivity = (session: ActiveRunSession) => {
+  if (session.mode === 'indoor') return;
   liveActivity?.update?.(elapsedForSession(session), session.points, session.status === 'paused');
 };
 
 const locationTaskHandler: TaskManager.TaskManagerTaskExecutor = async ({ data, error }) => {
   if (error || !data) return;
   const session = await readActiveRun();
-  if (!session || session.status !== 'recording') return;
+  if (!session || session.mode === 'indoor' || session.status !== 'recording') return;
   const locations = (data as { locations?: Location.LocationObject[] }).locations || [];
   const accepted = locations.filter(location => !location.coords.accuracy || location.coords.accuracy <= 65);
   if (!accepted.length) return;
@@ -93,7 +95,9 @@ export const requestRunLocationPermission = async () => {
   return true;
 };
 
-export const beginActiveRun = async (distanceUnit: 'miles' | 'km'): Promise<ActiveRunSession> => {
+export const beginActiveRun = async (distanceUnit: 'miles' | 'km', mode: 'outdoor' | 'indoor' = 'outdoor'): Promise<ActiveRunSession> => {
+  const existing = await readActiveRun();
+  if (existing) return existing;
   const now = Date.now();
   const session: ActiveRunSession = {
     id: `${now}`,
@@ -104,10 +108,13 @@ export const beginActiveRun = async (distanceUnit: 'miles' | 'km'): Promise<Acti
     points: [],
     updatedAt: now,
     distanceUnit,
+    mode,
   };
   await writeActiveRun(session);
-  await startLocationTask();
-  liveActivity?.start?.(now, distanceUnit);
+  if (mode === 'outdoor') {
+    await startLocationTask();
+    liveActivity?.start?.(now, distanceUnit);
+  }
   return session;
 };
 
@@ -126,12 +133,12 @@ export const pauseActiveRun = async () => {
 
 export const resumeActiveRun = async () => {
   const session = await readActiveRun();
-  if (!session) return null;
+  if (!session || session.status === 'recording') return session;
   session.segmentStartedAt = Date.now();
   session.status = 'recording';
   session.updatedAt = Date.now();
   await writeActiveRun(session);
-  await startLocationTask();
+  if (session.mode !== 'indoor') await startLocationTask();
   updateLiveActivity(session);
   return session;
 };
@@ -148,6 +155,7 @@ export const reconcileRunTracking = async () => {
     liveActivity?.end?.();
     return null;
   }
+  if (session.mode === 'indoor') return session;
   if (session.status === 'recording') await startLocationTask();
   liveActivity?.restore?.(session.startedAt, session.distanceUnit || 'miles', elapsedForSession(session), session.points, session.status === 'paused');
   return session;

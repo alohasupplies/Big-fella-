@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { NativeModules, Platform } from 'react-native';
 import { v4 as uuidv4 } from 'uuid';
 import { Run, RunType, RoutePoint } from '../types';
 import { runQuery, getFirst } from '../database/database';
@@ -39,6 +39,11 @@ export const requestHealthKitPermissions = async (): Promise<boolean> => {
     const write = [HKWorkoutTypeIdentifier, HKWorkoutRouteTypeIdentifier, HKQuantityTypeIdentifier?.distanceWalkingRunning].filter(Boolean);
     console.log('[HealthKit] Requesting read/write authorization');
     await Healthkit.requestAuthorization(read, write);
+    const workoutWriteStatus = await Healthkit.authorizationStatusFor(HKWorkoutTypeIdentifier);
+    if (workoutWriteStatus === 1) {
+      console.warn('[HealthKit] Workout write access was denied');
+      return false;
+    }
     console.log('[HealthKit] Authorization request completed successfully');
     
     // For this version, assume authorization was granted if no error was thrown
@@ -56,6 +61,8 @@ export const saveRunToHealthKit = async (
 ): Promise<boolean> => {
   if (!isHealthKitAvailable()) return false;
   try {
+    const existing = await getFirst<{ healthKitId: string }>('SELECT healthKitId FROM synced_health_runs WHERE runId = ?', [run.id]);
+    if (existing) return true;
     const authorized = await requestHealthKitPermissions();
     if (!authorized) return false;
     const end = new Date(run.createdAt);
@@ -63,22 +70,34 @@ export const saveRunToHealthKit = async (
     const distanceMeters = distanceUnit === 'miles' ? run.distance * 1609.344 : run.distance * 1000;
     const workoutUUID = await Healthkit.saveWorkoutSample(
       HKWorkoutActivityType.running,
-      [],
+      [{
+        quantityType: HKQuantityTypeIdentifier.distanceWalkingRunning,
+        quantity: distanceMeters,
+        unit: 'm',
+        startDate: start,
+        endDate: end,
+      }],
       start,
-      { end, totals: { distance: distanceMeters }, metadata: { HKExternalUUID: run.id } }
+      { end, totals: { distance: distanceMeters }, metadata: { HKExternalUUID: run.id, HKIndoorWorkout: !!run.isIndoor } }
     );
     if (!workoutUUID) return false;
-    if (route.length > 1) {
-      await Healthkit.saveWorkoutRoute(workoutUUID, route.map((point, index) => ({
-        latitude: point.latitude,
-        longitude: point.longitude,
-        altitude: point.altitude || 0,
-        horizontalAccuracy: 10,
-        verticalAccuracy: 10,
-        course: -1,
-        speed: -1,
-        timestamp: point.timestamp || start.getTime() + (index / Math.max(1, route.length - 1)) * run.duration * 1000,
-      })));
+    if (!run.isIndoor && route.length > 1) {
+      try {
+        await Healthkit.saveWorkoutRoute(workoutUUID, route.map((point, index) => ({
+          latitude: point.latitude,
+          longitude: point.longitude,
+          altitude: point.altitude || 0,
+          horizontalAccuracy: 10,
+          verticalAccuracy: 10,
+          course: -1,
+          speed: -1,
+          timestamp: point.timestamp || start.getTime() + (index / Math.max(1, route.length - 1)) * run.duration * 1000,
+        })));
+      } catch (routeError) {
+        // The workout and distance are already saved. A route attachment failure
+        // should not make the entire Health sync appear to have failed.
+        console.warn('[HealthKit] Workout saved, but route attachment failed:', routeError);
+      }
     }
     await markWorkoutSynced(workoutUUID, run.id);
     return true;
@@ -95,6 +114,46 @@ const isWorkoutSynced = async (healthKitId: string): Promise<boolean> => {
     [healthKitId]
   );
   return (result?.count || 0) > 0;
+};
+
+// Share one request between sync and the detail/share screens. Failed or empty
+// reads aren't cached: Watch routes can arrive after the workout itself.
+const routeRequests = new Map<string, Promise<string | undefined>>();
+export const importHealthRoute = (runId: string): Promise<string | undefined> => {
+  const pending = routeRequests.get(runId);
+  if (pending) return pending;
+  const request = (async () => {
+    const saved = await getFirst<Run>('SELECT * FROM runs WHERE id = ?', [runId]);
+    if (!saved || saved.isIndoor) return undefined;
+    if (saved.routeCoordinates) {
+      try { if (JSON.parse(saved.routeCoordinates).length > 1) return saved.routeCoordinates; } catch {}
+    }
+    if (!isHealthKitAvailable() || !NativeModules.RunVideoExporter?.readHealthRoute) return undefined;
+    const link = await getFirst<{ healthKitId: string }>(
+      'SELECT healthKitId FROM synced_health_runs WHERE runId = ?', [runId]
+    );
+    if (!link) return undefined;
+    await Healthkit.requestAuthorization([HKWorkoutTypeIdentifier, HKWorkoutRouteTypeIdentifier], []);
+    const points: RoutePoint[] = await NativeModules.RunVideoExporter.readHealthRoute(link.healthKitId);
+    if (points.length < 2) return undefined;
+    const routeCoordinates = JSON.stringify(points);
+    await runQuery('UPDATE runs SET routeCoordinates = ?, updatedAt = ? WHERE id = ?',
+      [routeCoordinates, new Date().toISOString(), runId]);
+    return routeCoordinates;
+  })().finally(() => routeRequests.delete(runId));
+  routeRequests.set(runId, request);
+  return request;
+};
+
+const tryImportHealthRoute = async (runId: string): Promise<boolean> => {
+  try {
+    const saved = await getFirst<Run>('SELECT * FROM runs WHERE id = ?', [runId]);
+    if (saved?.routeCoordinates) return false;
+    return !!(await importHealthRoute(runId));
+  } catch (error) {
+    console.warn('[HealthKit] Route not available yet:', error);
+    return false;
+  }
 };
 
 // Mark a workout as synced
@@ -123,6 +182,7 @@ export interface HealthSyncResult {
   imported: number;
   skipped: number;
   errors: number;
+  routesUpdated?: number;
 }
 
 // Fetch running workouts from HealthKit and import them
@@ -207,6 +267,8 @@ export const syncRunsFromHealthKit = async (
 
         // Check if already synced
         if (await isWorkoutSynced(workoutId)) {
+          const linked = await getFirst<{ runId: string }>('SELECT runId FROM synced_health_runs WHERE healthKitId = ?', [workoutId]);
+          if (linked && await tryImportHealthRoute(linked.runId)) result.routesUpdated = (result.routesUpdated || 0) + 1;
           result.skipped++;
           continue;
         }
@@ -243,8 +305,8 @@ export const syncRunsFromHealthKit = async (
         const now_iso = new Date().toISOString();
 
         await runQuery(
-          `INSERT INTO runs (id, date, distance, duration, pace, routeName, runType, weather, notes, createdAt, updatedAt)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO runs (id, date, distance, duration, pace, routeName, runType, weather, notes, createdAt, updatedAt, isIndoor)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             runId,
             runDate,
@@ -257,11 +319,13 @@ export const syncRunsFromHealthKit = async (
             'Synced from Apple Health',
             now_iso,
             now_iso,
+            workout.metadata?.HKIndoorWorkout === true || workout.metadata?.HKIndoorWorkout === 1 ? 1 : 0,
           ]
         );
 
         // Mark as synced to prevent duplicates
         await markWorkoutSynced(workoutId, runId);
+        await tryImportHealthRoute(runId);
 
         // Update streak
         const { updateStreak } = require('./runService');

@@ -8,9 +8,11 @@ type Props = {
   points: RoutePoint[];
   live?: boolean;
   interactive?: boolean;
+  visiblePoints?: RoutePoint[];
+  emptyMessage?: string;
 };
 
-export const RunMap: React.FC<Props> = ({ points, live = false, interactive = true }) => {
+export const RunMap: React.FC<Props> = ({ points, live = false, interactive = true, visiblePoints, emptyMessage }) => {
   const mapRef = useRef<MapView>(null);
 
   useEffect(() => {
@@ -25,13 +27,14 @@ export const RunMap: React.FC<Props> = ({ points, live = false, interactive = tr
   if (!points.length) {
     return (
       <View style={styles.empty}>
-        <Text style={styles.emptyLabel}>No GPS route for this activity</Text>
+        <Text style={styles.emptyLabel}>{emptyMessage || 'No GPS route for this activity'}</Text>
       </View>
     );
   }
 
   const first = points[0];
-  const last = points[points.length - 1];
+  const trace = visiblePoints || points;
+  const last = trace[trace.length - 1] || first;
 
   return (
     <MapView
@@ -53,10 +56,11 @@ export const RunMap: React.FC<Props> = ({ points, live = false, interactive = tr
         latitudeDelta: 0.012,
         longitudeDelta: 0.012,
       }}
+      onMapReady={() => mapRef.current?.fitToCoordinates(points, { edgePadding: { top: 90, right: 44, bottom: 170, left: 44 }, animated: false })}
     >
-      {points.length > 1 && (
+      {trace.length > 1 && (
         <Polyline
-          coordinates={points}
+          coordinates={trace}
           strokeColor={colors.primary}
           strokeWidth={5}
           lineCap="round"
@@ -64,7 +68,7 @@ export const RunMap: React.FC<Props> = ({ points, live = false, interactive = tr
         />
       )}
       {!live && <Marker coordinate={first} pinColor="#23A36D" title="Start" />}
-      {!live && points.length > 1 && <Marker coordinate={last} pinColor={colors.primary} title="Finish" />}
+      {!live && !visiblePoints && points.length > 1 && <Marker coordinate={last} pinColor={colors.primary} title="Finish" />}
     </MapView>
   );
 };

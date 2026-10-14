@@ -103,6 +103,7 @@ export interface Set {
 
 // Run Types
 export interface Run {
+  isIndoor?: number;
   id: string;
   date: string;
   distance: number; // in user's preferred unit
@@ -113,7 +114,6 @@ export interface Run {
   weather?: string;
   notes?: string;
   routeCoordinates?: string;
-  elevationGain?: number;
   photoUri?: string;
   createdAt: string;
   updatedAt: string;
@@ -257,6 +257,10 @@ export interface WorkoutTemplate {
   exercises: TemplateExercise[];
   createdAt: string;
   updatedAt: string;
+  description?: string;
+  level?: 'Beginner' | 'Intermediate';
+  schedule?: string;
+  isBuiltIn?: boolean;
 }
 
 export interface TemplateExercise {
@@ -277,6 +281,7 @@ export type RootStackParamList = {
   LogWorkout: { workoutId?: string; selectedExercises?: ExerciseLibraryItem[]; templateId?: string };
   LogRun: { runId?: string };
   RecordRun: undefined;
+  IndoorRun: undefined;
   ExerciseDetail: { exerciseLibraryId: string };
   WorkoutDetail: { workoutId: string };
   RunDetail: { runId: string; run: Run };

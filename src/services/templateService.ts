@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { WorkoutTemplate, TemplateExercise, MuscleGroup } from '../types';
 import { getAll, getFirst, runQuery } from '../database/database';
+import { builtInWorkoutTemplates } from '../data/builtInWorkoutTemplates';
 
 interface TemplateExerciseInput {
   exerciseLibraryId: string;
@@ -10,6 +11,37 @@ interface TemplateExerciseInput {
   defaultReps?: number;
   defaultWeight?: number;
 }
+
+const getBuiltInTemplates = async (): Promise<WorkoutTemplate[]> => {
+  const libraryExercises = await getAll<{ id: string; name: string }>(
+    'SELECT id, name FROM exercise_library'
+  );
+  const exerciseIds = new Map(libraryExercises.map((exercise) => [exercise.name, exercise.id]));
+  const seededAt = '2026-01-01T00:00:00.000Z';
+
+  return builtInWorkoutTemplates.map((definition) => ({
+    id: definition.id,
+    name: definition.name,
+    description: definition.description,
+    level: definition.level,
+    schedule: definition.schedule,
+    isBuiltIn: true,
+    createdAt: seededAt,
+    updatedAt: seededAt,
+    exercises: definition.exercises
+      .filter((exercise) => exerciseIds.has(exercise.exerciseName))
+      .map((exercise, orderIndex) => ({
+        id: `${definition.id}-${orderIndex}`,
+        templateId: definition.id,
+        exerciseLibraryId: exerciseIds.get(exercise.exerciseName) as string,
+        exerciseName: exercise.exerciseName,
+        muscleGroups: exercise.muscleGroups,
+        orderIndex,
+        defaultSets: exercise.defaultSets,
+        defaultReps: exercise.defaultReps,
+      })),
+  }));
+};
 
 export const createTemplate = async (
   name: string,
@@ -56,12 +88,17 @@ export const getTemplates = async (): Promise<WorkoutTemplate[]> => {
   const templates: WorkoutTemplate[] = [];
   for (const row of rows) {
     const exercises = await getTemplateExercises(row.id);
-    templates.push({ ...row, exercises });
+    templates.push({ ...row, exercises, isBuiltIn: false });
   }
-  return templates;
+  return [...await getBuiltInTemplates(), ...templates];
 };
 
 export const getTemplateById = async (id: string): Promise<WorkoutTemplate | null> => {
+  if (id.startsWith('builtin-')) {
+    const templates = await getBuiltInTemplates();
+    return templates.find((template) => template.id === id) || null;
+  }
+
   const row = await getFirst<{
     id: string;
     name: string;
@@ -72,7 +109,7 @@ export const getTemplateById = async (id: string): Promise<WorkoutTemplate | nul
   if (!row) return null;
 
   const exercises = await getTemplateExercises(id);
-  return { ...row, exercises };
+  return { ...row, exercises, isBuiltIn: false };
 };
 
 const getTemplateExercises = async (templateId: string): Promise<TemplateExercise[]> => {
@@ -100,6 +137,7 @@ const getTemplateExercises = async (templateId: string): Promise<TemplateExercis
 };
 
 export const deleteTemplate = async (id: string): Promise<void> => {
+  if (id.startsWith('builtin-')) return;
   await runQuery('DELETE FROM template_exercises WHERE templateId = ?', [id]);
   await runQuery('DELETE FROM workout_templates WHERE id = ?', [id]);
 };

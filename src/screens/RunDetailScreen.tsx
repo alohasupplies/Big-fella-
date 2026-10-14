@@ -9,20 +9,21 @@ import { deleteRun, formatDuration, formatPace, parseRoute, updateRecordedRunDet
 import { parseLocalDate } from '../utils/date';
 import { RunMap } from '../components/run/RunMap';
 import { useSettings } from '../context/SettingsContext';
+import { useRunWithHealthRoute } from '../hooks/useRunWithHealthRoute';
 
 type Props = RouteProp<RootStackParamList, 'RunDetail'>;
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 const RunDetailScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const { run: initialRun } = useRoute<Props>().params;
-  const [run, setRun] = useState(initialRun);
+  const { run, setRun, loadingRoute, routeError, retryRoute } = useRunWithHealthRoute(initialRun);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(initialRun.routeName || '');
   const [runType, setRunType] = useState<RunType>(initialRun.runType);
   const [saving, setSaving] = useState(false);
   const { settings } = useSettings();
   const points = parseRoute(run);
-  const isRecordedRun = points.length > 1;
+  const isRecordedRun = points.length > 1 || !!run.isIndoor;
   const runTypes: RunType[] = ['easy', 'tempo', 'intervals', 'long', 'recovery', 'race'];
   const saveDetails = async () => {
     setSaving(true);
@@ -39,10 +40,11 @@ const RunDetailScreen: React.FC = () => {
   const remove = () => Alert.alert('Delete run?', 'This may affect your streak.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: async () => { await deleteRun(run.id); navigation.goBack(); } }]);
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.map}><RunMap points={points} /></View>
+      {run.isIndoor ? <View style={{ padding: 28, backgroundColor: colors.surface, alignItems: 'center' }}><Ionicons name="fitness-outline" size={42} color={colors.primary} /><Text style={[styles.title, { fontSize: 20 }]}>Indoor run</Text><Text style={styles.noteText}>Treadmill distance · No GPS route</Text></View> : <View style={styles.map}><RunMap points={points} emptyMessage={loadingRoute ? 'Loading route from Apple Health…' : undefined} /></View>}
+      {!run.isIndoor && !points.length && run.notes?.includes('Synced from Apple Health') && <TouchableOpacity onPress={retryRoute} disabled={loadingRoute} style={{ padding: 16 }}><Text style={styles.noteText}>{routeError ? 'Could not read the route. Unlock your phone and tap to retry.' : 'Apple Health must contain a GPS route for this run. Allow Workout Routes access in Health, then tap to retry.'}</Text></TouchableOpacity>}
       <View style={styles.headerRow}><View style={styles.headerCopy}><Text style={styles.date}>{parseLocalDate(run.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</Text><Text style={styles.title}>{run.routeName || `${run.runType.charAt(0).toUpperCase() + run.runType.slice(1)} run`}</Text></View>{isRecordedRun && <TouchableOpacity style={styles.editIcon} onPress={() => { setName(run.routeName || ''); setRunType(run.runType); setEditing(true); }}><Ionicons name="pencil" size={19} color={colors.white} /></TouchableOpacity>}<TouchableOpacity style={styles.shareIcon} onPress={() => navigation.navigate('ShareRun', { run })}><Ionicons name="share-outline" size={22} color={colors.white} /></TouchableOpacity></View>
       <View style={styles.bigStats}><View style={styles.mainStat}><Text style={styles.value}>{run.distance.toFixed(2)}</Text><Text style={styles.label}>{settings.distanceUnit.toUpperCase()}</Text></View><View style={styles.mainStat}><Text style={styles.value}>{formatDuration(run.duration)}</Text><Text style={styles.label}>MOVING TIME</Text></View><View style={styles.mainStat}><Text style={styles.value}>{formatPace(run.pace)}</Text><Text style={styles.label}>AVG PACE</Text></View></View>
-      <View style={styles.detailCard}><Text style={styles.section}>Run details</Text><View style={styles.detailRow}><Text style={styles.detailLabel}>Elevation gain</Text><Text style={styles.detailValue}>{Math.round((run.elevationGain || 0) * (settings.distanceUnit === 'miles' ? 3.28084 : 1))} {settings.distanceUnit === 'miles' ? 'ft' : 'm'}</Text></View><View style={styles.detailRow}><Text style={styles.detailLabel}>Activity type</Text><Text style={styles.detailValue}>{run.runType}</Text></View>{run.weather && <View style={styles.detailRow}><Text style={styles.detailLabel}>Weather</Text><Text style={styles.detailValue}>{run.weather}</Text></View>}</View>
+      <View style={styles.detailCard}><Text style={styles.section}>Run details</Text><View style={styles.detailRow}><Text style={styles.detailLabel}>Activity type</Text><Text style={styles.detailValue}>{run.runType}</Text></View>{run.weather && <View style={styles.detailRow}><Text style={styles.detailLabel}>Weather</Text><Text style={styles.detailValue}>{run.weather}</Text></View>}</View>
       {run.notes && <View style={styles.notes}><Text style={styles.section}>Notes</Text><Text style={styles.noteText}>{run.notes}</Text></View>}
       <TouchableOpacity style={styles.shareButton} onPress={() => navigation.navigate('ShareRun', { run })}><Ionicons name="sparkles-outline" size={20} color={colors.white} /><Text style={styles.shareText}>Create shareable recap</Text></TouchableOpacity>
       <TouchableOpacity style={styles.deleteButton} onPress={remove}><Text style={styles.deleteText}>Delete activity</Text></TouchableOpacity>

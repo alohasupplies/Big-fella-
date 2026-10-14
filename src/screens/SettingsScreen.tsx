@@ -238,9 +238,9 @@ const SettingsScreen: React.FC = () => {
           <Card variant="outlined" style={styles.card}>
             <View style={styles.settingRow}>
               <View style={styles.settingLabelContainer}>
-                <Text style={styles.settingLabel}>Sync Runs from Health</Text>
+                <Text style={styles.settingLabel}>Sync Runs with Apple Health</Text>
                 <Text style={styles.settingDescription}>
-                  Automatically import running workouts from Apple Health
+                  Import Health workouts and save runs recorded in Athleticcs
                 </Text>
               </View>
               <Switch
@@ -251,7 +251,7 @@ const SettingsScreen: React.FC = () => {
                     await new Promise<void>((resolve) => {
                       Alert.alert(
                         'Apple Health Access',
-                        'This app will request read-only access to your workout data (running and walking activities) from Apple Health.\n\nNo data is written to Apple Health. Your health data is never shared with third parties or used for advertising. All data stays on your device.',
+                        'Athleticcs will request access to read running workouts and write completed Athleticcs runs, distance, and GPS routes to Apple Health.\n\nYour health data is never shared with third parties or used for advertising. All data stays on your device.',
                         [
                           { text: 'Cancel', style: 'cancel', onPress: () => resolve() },
                           {
@@ -387,8 +387,8 @@ const SettingsScreen: React.FC = () => {
               <View style={styles.infoContent}>
                 <Text style={styles.infoTitle}>How We Use Apple Health</Text>
                 <Text style={styles.infoDescription}>
-                  This app uses Apple HealthKit to import your running and walking workouts
-                  so your activity stays in one place.
+                  Athleticcs uses Apple HealthKit to import running workouts and save runs
+                  recorded in this app so your activity stays in one place.
                 </Text>
               </View>
             </View>
@@ -404,10 +404,10 @@ const SettingsScreen: React.FC = () => {
             </View>
 
             <View style={styles.healthDetailRow}>
-              <Ionicons name="close-circle-outline" size={20} color={colors.textSecondary} />
+              <Ionicons name="cloud-upload-outline" size={20} color={colors.textSecondary} />
               <Text style={styles.healthDetailText}>
                 <Text style={styles.healthDetailBold}>Data Written: </Text>
-                None. This app does not write any data to Apple Health.
+                Completed running workouts, distance, duration, and GPS routes.
               </Text>
             </View>
 

@@ -59,7 +59,7 @@ export const HealthSyncProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       const result = await syncRecentFromHealthKit(settings.distanceUnit);
       // Bump version so all screens know to reload
-      if (result.imported > 0) {
+      if (result.imported > 0 || (result.routesUpdated || 0) > 0) {
         setSyncVersion((v) => v + 1);
       }
     } catch (error) {

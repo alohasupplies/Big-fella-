@@ -35,7 +35,6 @@ export const createRecordedRun = async (
   distance: number,
   duration: number,
   routeCoordinates: RoutePoint[],
-  elevationGain: number = 0,
   runType: RunType = 'easy'
 ): Promise<Run> => {
   const runId = uuidv4();
@@ -45,9 +44,9 @@ export const createRecordedRun = async (
 
   await runQuery(
     `INSERT INTO runs
-      (id, date, distance, duration, pace, runType, routeCoordinates, elevationGain, createdAt, updatedAt)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [runId, runDate, distance, duration, pace, runType, JSON.stringify(routeCoordinates), elevationGain, now, now]
+      (id, date, distance, duration, pace, runType, routeCoordinates, createdAt, updatedAt)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [runId, runDate, distance, duration, pace, runType, JSON.stringify(routeCoordinates), now, now]
   );
   await updateStreak(runDate);
   return (await getRunById(runId)) as Run;
@@ -61,6 +60,20 @@ export const parseRoute = (run: Run): RoutePoint[] => {
   } catch {
     return [];
   }
+};
+
+export const createIndoorRun = async (sessionId: string, distance: number, duration: number): Promise<Run> => {
+  if (!Number.isFinite(distance) || distance <= 0 || !Number.isFinite(duration) || duration < 5) throw new Error('Enter a valid distance and record at least 5 seconds.');
+  const id = `indoor-${sessionId}`;
+  const existing = await getRunById(id);
+  if (existing) return existing;
+  const now = new Date();
+  const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  await runQuery(`INSERT INTO runs (id, date, distance, duration, pace, routeName, runType, isIndoor, createdAt, updatedAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+    [id, date, distance, duration, duration / 60 / distance, 'Treadmill run', 'easy', now.toISOString(), now.toISOString()]);
+  await updateStreak(date);
+  return (await getRunById(id)) as Run;
 };
 
 export const updateRunPhoto = async (runId: string, photoUri?: string): Promise<void> => {
