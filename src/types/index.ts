@@ -103,6 +103,7 @@ export interface Set {
 
 // Run Types
 export interface Run {
+  originalRunData?: string;
   isIndoor?: number;
   id: string;
   date: string;
@@ -124,6 +125,7 @@ export interface RoutePoint {
   longitude: number;
   altitude?: number | null;
   timestamp?: number;
+  elapsedSeconds?: number;
 }
 
 export type RunType = 'easy' | 'tempo' | 'intervals' | 'long' | 'recovery' | 'race';
@@ -285,6 +287,7 @@ export type RootStackParamList = {
   ExerciseDetail: { exerciseLibraryId: string };
   WorkoutDetail: { workoutId: string };
   RunDetail: { runId: string; run: Run };
+  TrimRun: { run: Run };
   ShareRun: { run: Run };
   ExerciseSearch: {};
   ChallengeDetail: { challengeId: string };

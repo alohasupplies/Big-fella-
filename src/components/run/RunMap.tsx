@@ -10,19 +10,20 @@ type Props = {
   interactive?: boolean;
   visiblePoints?: RoutePoint[];
   emptyMessage?: string;
+  contextPoints?: RoutePoint[];
 };
 
-export const RunMap: React.FC<Props> = ({ points, live = false, interactive = true, visiblePoints, emptyMessage }) => {
+export const RunMap: React.FC<Props> = ({ points, live = false, interactive = true, visiblePoints, emptyMessage, contextPoints }) => {
   const mapRef = useRef<MapView>(null);
 
   useEffect(() => {
     if (points.length > 1) {
-      mapRef.current?.fitToCoordinates(points, {
+      mapRef.current?.fitToCoordinates(contextPoints || points, {
         edgePadding: { top: 64, right: 44, bottom: 64, left: 44 },
         animated: live,
       });
     }
-  }, [points.length, live]);
+  }, [points.length, live, contextPoints]);
 
   if (!points.length) {
     return (
@@ -56,8 +57,9 @@ export const RunMap: React.FC<Props> = ({ points, live = false, interactive = tr
         latitudeDelta: 0.012,
         longitudeDelta: 0.012,
       }}
-      onMapReady={() => mapRef.current?.fitToCoordinates(points, { edgePadding: { top: 90, right: 44, bottom: 170, left: 44 }, animated: false })}
+      onMapReady={() => mapRef.current?.fitToCoordinates(contextPoints || points, { edgePadding: { top: 64, right: 44, bottom: 64, left: 44 }, animated: false })}
     >
+      {contextPoints && contextPoints.length > 1 && <Polyline coordinates={contextPoints} strokeColor="#777777" strokeWidth={4} />}
       {trace.length > 1 && (
         <Polyline
           coordinates={trace}

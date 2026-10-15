@@ -11,8 +11,10 @@
 
 @interface RCT_EXTERN_MODULE(RunLiveActivity, NSObject)
 RCT_EXTERN_METHOD(start:(nonnull NSNumber *)startedAt distanceUnit:(NSString *)distanceUnit)
+RCT_EXTERN_METHOD(startSession:(nonnull NSNumber *)startedAt distanceUnit:(NSString *)distanceUnit mode:(NSString *)mode)
 RCT_EXTERN_METHOD(update:(nonnull NSNumber *)elapsed points:(NSArray *)points paused:(BOOL)paused)
 RCT_EXTERN_METHOD(restore:(nonnull NSNumber *)startedAt distanceUnit:(NSString *)distanceUnit elapsed:(nonnull NSNumber *)elapsed points:(NSArray *)points paused:(BOOL)paused)
+RCT_EXTERN_METHOD(restoreSession:(nonnull NSNumber *)startedAt distanceUnit:(NSString *)distanceUnit elapsed:(nonnull NSNumber *)elapsed points:(NSArray *)points paused:(BOOL)paused mode:(NSString *)mode)
 RCT_EXTERN_METHOD(end)
 @end
 

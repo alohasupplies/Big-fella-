@@ -51,6 +51,10 @@ export const initDatabase = async (): Promise<void> => {
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
     )`,
+    `CREATE TABLE IF NOT EXISTS workout_drafts (
+      id TEXT PRIMARY KEY,
+      data TEXT NOT NULL
+    )`,
     `CREATE TABLE IF NOT EXISTS exercise_library (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -213,6 +217,9 @@ export const initDatabase = async (): Promise<void> => {
   }
   if (!existingRunColumns.has('isIndoor')) {
     await executeSql(database, 'ALTER TABLE runs ADD COLUMN isIndoor INTEGER NOT NULL DEFAULT 0');
+  }
+  if (!existingRunColumns.has('originalRunData')) {
+    await executeSql(database, 'ALTER TABLE runs ADD COLUMN originalRunData TEXT');
   }
 
   // Initialize default settings if not exists

@@ -7,8 +7,10 @@ struct RunActivityAttributes: ActivityAttributes {
     var elapsed: Int
     var distanceMeters: Double
     var paused: Bool
+    var updatedAt: Date? = nil
   }
 
   var startedAt: Date
   var distanceUnit: String
+  var mode: String? = nil
 }

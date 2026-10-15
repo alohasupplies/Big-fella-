@@ -18,6 +18,7 @@ import LogRunScreen from '../screens/LogRunScreen';
 import ExerciseDetailScreen from '../screens/ExerciseDetailScreen';
 import WorkoutDetailScreen from '../screens/WorkoutDetailScreen';
 import RunDetailScreen from '../screens/RunDetailScreen';
+import TrimRunScreen from '../screens/TrimRunScreen';
 import ExerciseSearchScreen from '../screens/ExerciseSearchScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import DataExportScreen from '../screens/DataExportScreen';
@@ -187,6 +188,7 @@ const MainNavigator = () => {
         }}
       />
       <Stack.Screen name="ShareRun" component={ShareRunScreen} options={{ title: 'Share Run', presentation: 'modal' }} />
+      <Stack.Screen name="TrimRun" component={TrimRunScreen} options={{ title: 'Trim Run' }} />
       <Stack.Screen
         name="ExerciseSearch"
         component={ExerciseSearchScreen}

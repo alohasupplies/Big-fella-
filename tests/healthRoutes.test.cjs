@@ -5,7 +5,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const ts = require('typescript');
 
-function fixture({ savedRoute, linked = true, read } = {}) {
+function fixture({ savedRoute, linked = true, read, corrected = false } = {}) {
   const writes = [];
   let reads = 0;
   const route = [{ latitude: 25, longitude: -80, timestamp: 1700000000000 },
@@ -22,7 +22,7 @@ function fixture({ savedRoute, linked = true, read } = {}) {
     if (name === '@kingstinct/react-native-healthkit') return { default: { requestAuthorization: async () => {} } };
     if (name === '../database/database') return {
       getFirst: async sql => sql.includes('synced_health_runs') ? (linked ? { healthKitId: 'health-id' } : null)
-        : { id: 'run-id', routeCoordinates: savedRoute, routeName: 'My edited name', runType: 'race' },
+        : { id: 'run-id', routeCoordinates: savedRoute, routeName: 'My edited name', runType: 'race', originalRunData: corrected ? '{}' : undefined },
       runQuery: async (sql, params) => writes.push({ sql, params }),
     };
     throw new Error(`Unexpected dependency: ${name}`);
@@ -42,6 +42,13 @@ test('retains an existing route without querying Health', async () => {
   const savedRoute = JSON.stringify([{ latitude: 1, longitude: 2 }, { latitude: 3, longitude: 4 }]);
   const f = fixture({ savedRoute });
   assert.equal(await f.service.importHealthRoute('run-id'), savedRoute);
+  assert.equal(f.reads(), 0);
+  assert.equal(f.writes.length, 0);
+});
+
+test('Health route sync never overwrites a corrected recording', async () => {
+  const f = fixture({ corrected: true });
+  assert.equal(await f.service.importHealthRoute('run-id'), undefined);
   assert.equal(f.reads(), 0);
   assert.equal(f.writes.length, 0);
 });

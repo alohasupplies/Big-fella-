@@ -124,7 +124,7 @@ export const importHealthRoute = (runId: string): Promise<string | undefined> =>
   if (pending) return pending;
   const request = (async () => {
     const saved = await getFirst<Run>('SELECT * FROM runs WHERE id = ?', [runId]);
-    if (!saved || saved.isIndoor) return undefined;
+    if (!saved || saved.isIndoor || saved.originalRunData) return undefined;
     if (saved.routeCoordinates) {
       try { if (JSON.parse(saved.routeCoordinates).length > 1) return saved.routeCoordinates; } catch {}
     }

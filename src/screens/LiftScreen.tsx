@@ -21,6 +21,7 @@ import {
   getWeeklyVolume,
 } from '../services/workoutService';
 import { deleteTemplate, getTemplates } from '../services/templateService';
+import { readWorkoutDraft } from '../services/workoutDraftService';
 import { parseLocalDate } from '../utils/date';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -33,19 +34,22 @@ const LiftScreen: React.FC = () => {
   const [weeklyVolume, setWeeklyVolume] = useState(0);
   const [totalWorkouts, setTotalWorkouts] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const [draftExerciseCount, setDraftExerciseCount] = useState(0);
 
   const loadData = useCallback(async () => {
     try {
-      const [recentWorkouts, volume, count, loadedTemplates] = await Promise.all([
+      const [recentWorkouts, volume, count, loadedTemplates, draft] = await Promise.all([
         getRecentWorkouts(10),
         getWeeklyVolume(),
         getTotalWorkoutCount(),
         getTemplates(),
+        readWorkoutDraft(),
       ]);
       setWorkouts(recentWorkouts);
       setWeeklyVolume(volume);
       setTotalWorkouts(count);
       setTemplates(loadedTemplates);
+      setDraftExerciseCount(draft?.exercises.length || 0);
     } catch (error) {
       console.error('Failed to load lift data:', error);
     }
@@ -128,11 +132,11 @@ const LiftScreen: React.FC = () => {
           onPress={() => navigation.navigate('LogWorkout', {})}
         >
           <View style={styles.startIcon}>
-            <Ionicons name="add" size={25} color={colors.white} />
+            <Ionicons name={draftExerciseCount > 0 ? 'play' : 'add'} size={25} color={colors.white} />
           </View>
           <View style={styles.startCopy}>
-            <Text style={styles.startTitle}>Start a workout</Text>
-            <Text style={styles.startSub}>Build your own session</Text>
+            <Text style={styles.startTitle}>{draftExerciseCount > 0 ? 'Resume workout' : 'Start a workout'}</Text>
+            <Text style={styles.startSub}>{draftExerciseCount > 0 ? `${draftExerciseCount} exercises · Draft saved` : 'Build your own session'}</Text>
           </View>
           <Ionicons name="arrow-forward" size={22} color={colors.white} />
         </TouchableOpacity>

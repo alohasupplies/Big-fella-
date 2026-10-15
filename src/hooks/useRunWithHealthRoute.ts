@@ -3,7 +3,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Run } from '../types';
 import { useSettings } from '../context/SettingsContext';
 import { importHealthRoute } from '../services/healthService';
-import { parseRoute } from '../services/runService';
+import { getRunById, parseRoute } from '../services/runService';
 
 export function useRunWithHealthRoute(initialRun: Run) {
   const [run, setRun] = useState(initialRun);
@@ -12,6 +12,11 @@ export function useRunWithHealthRoute(initialRun: Run) {
   const [attempt, setAttempt] = useState(0);
   const { settings } = useSettings();
   useEffect(() => setRun(initialRun), [initialRun.id]);
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    getRunById(initialRun.id).then(saved => { if (active && saved) setRun(saved); }).catch(() => undefined);
+    return () => { active = false; };
+  }, [initialRun.id]));
   const hasRoute = parseRoute(run).length > 1;
   useFocusEffect(useCallback(() => {
     if (hasRoute || run.isIndoor || !settings.healthSyncEnabled) return;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,50 +9,127 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
+  AppState,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 import { spacing, fontSize, fontWeight, borderRadius, touchTarget } from '../theme/spacing';
-import { Card, Button, Input } from '../components/common';
-import { RootStackParamList, ExerciseLibraryItem, Set, Exercise, MuscleGroup } from '../types';
+import { Card, Button } from '../components/common';
+import { RootStackParamList, Exercise, MuscleGroup } from '../types';
 import { useSettings } from '../context/SettingsContext';
-import { createWorkout, getWorkoutById } from '../services/workoutService';
+import { createWorkout } from '../services/workoutService';
 import { createTemplate, getTemplateById } from '../services/templateService';
+import { clearWorkoutDraft, readWorkoutDraft, saveWorkoutDraft, WorkoutDraft, DraftExercise, DraftSet } from '../services/workoutDraftService';
 import { v4 as uuidv4 } from 'uuid';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteProps = RouteProp<RootStackParamList, 'LogWorkout'>;
 
-interface WorkoutExercise {
-  id: string;
-  exerciseLibraryId: string;
-  exerciseName: string;
-  muscleGroups: string[];
-  sets: SetEntry[];
-}
-
-interface SetEntry {
-  id: string;
-  weight: string;
-  reps: string;
-  rpe: string;
-  isWarmup: boolean;
-  completed: boolean;
-}
+type WorkoutExercise = DraftExercise;
+type SetEntry = DraftSet;
 
 const LogWorkoutScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProps>();
   const { settings } = useSettings();
+  const insets = useSafeAreaInsets();
 
-  const [exercises, setExercises] = useState<WorkoutExercise[]>([]);
-  const [notes, setNotes] = useState('');
+  const [draft, setDraft] = useState<WorkoutDraft>({ exercises: [], notes: '', weightUnit: settings.weightUnit });
+  const draftRef = useRef(draft);
+  const mounted = useRef(true);
+  const savingRef = useRef(false);
+  const finished = useRef(false);
+  const revision = useRef(0);
+  const scrollView = useRef<ScrollView>(null);
+  const scrollToAddedExercise = useRef(false);
+  const [ready, setReady] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const [draftStatus, setDraftStatus] = useState<'saved' | 'saving' | 'error'>('saved');
+  const { exercises, notes } = draft;
   const [restTimer, setRestTimer] = useState(0);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const persist = (next: WorkoutDraft) => {
+    const currentRevision = ++revision.current;
+    setDraftStatus('saving');
+    return saveWorkoutDraft(next).then(() => {
+      if (mounted.current && currentRevision === revision.current) setDraftStatus('saved');
+    }).catch((error) => {
+      console.error('Failed to save workout draft:', error);
+      if (mounted.current && currentRevision === revision.current) setDraftStatus('error');
+      throw error;
+    });
+  };
+  const updateDraft = (next: WorkoutDraft) => {
+    if (savingRef.current || finished.current) return;
+    draftRef.current = next;
+    setDraft(next);
+    // Start storage immediately, without waiting for a debounce or unmount.
+    void persist(next).catch(() => undefined);
+  };
+  const setExercises = (next: WorkoutExercise[] | ((previous: WorkoutExercise[]) => WorkoutExercise[])) => {
+    updateDraft({ ...draftRef.current, exercises: typeof next === 'function' ? next(draftRef.current.exercises) : next });
+  };
+  const setNotes = (next: string) => updateDraft({ ...draftRef.current, notes: next });
+
+  useEffect(() => {
+    mounted.current = true;
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state !== 'active' && !finished.current && draftRef.current.exercises.length > 0) {
+        void persist(draftRef.current).catch(() => undefined);
+      }
+    });
+    return () => { mounted.current = false; subscription.remove(); };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const initialize = async () => {
+      try {
+        const restored = await readWorkoutDraft();
+        let next = restored;
+        if (!next && route.params?.templateId) {
+          const template = await getTemplateById(route.params.templateId);
+          if (template) next = {
+            notes: '', weightUnit: settings.weightUnit,
+            exercises: template.exercises.map((te) => ({
+              id: uuidv4(), exerciseLibraryId: te.exerciseLibraryId,
+              exerciseName: te.exerciseName, muscleGroups: te.muscleGroups,
+              sets: Array.from({ length: te.defaultSets }, () => ({
+                id: uuidv4(), weight: te.defaultWeight?.toString() || '',
+                reps: te.defaultReps?.toString() || '', rpe: '', isWarmup: false, completed: false,
+              })),
+            })),
+          };
+        }
+        if (cancelled) return;
+        if (next) {
+          draftRef.current = next;
+          setDraft(next);
+          if (!restored) await persist(next);
+        }
+        if (cancelled) return;
+        navigation.setParams({ templateId: undefined });
+        setLoadError(false);
+        setReady(true);
+        if (restored && route.params?.templateId) {
+          Alert.alert('Workout resumed', 'Your unfinished workout has been restored. Save or discard this draft before starting a new template.');
+        }
+      } catch (error) {
+        console.error('Failed to restore workout draft:', error);
+        if (!cancelled) setLoadError(true);
+      }
+    };
+    void initialize();
+    return () => { cancelled = true; };
+  }, [loadAttempt]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -72,8 +149,7 @@ const LogWorkoutScreen: React.FC = () => {
   }, [isTimerRunning, restTimer]);
 
   useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      if (route.params?.selectedExercises && route.params.selectedExercises.length > 0) {
+      if (ready && route.params?.selectedExercises && route.params.selectedExercises.length > 0) {
         const newExercises: WorkoutExercise[] = route.params.selectedExercises.map((exercise) => ({
           id: uuidv4(),
           exerciseLibraryId: exercise.id,
@@ -91,39 +167,28 @@ const LogWorkoutScreen: React.FC = () => {
           ],
         }));
         setExercises((prev) => [...prev, ...newExercises]);
-        navigation.setParams({ selectedExercises: undefined } as any);
+        scrollToAddedExercise.current = true;
+        navigation.setParams({ selectedExercises: undefined });
       }
-    });
-    return unsubscribe;
-  }, [navigation, route.params?.selectedExercises]);
+  }, [ready, navigation, route.params?.selectedExercises]);
 
-  // Load exercises from template if templateId is provided
-  useEffect(() => {
-    const loadTemplate = async () => {
-      if (route.params?.templateId) {
-        const template = await getTemplateById(route.params.templateId);
-        if (template) {
-          const templateExercises: WorkoutExercise[] = template.exercises.map((te) => ({
-            id: uuidv4(),
-            exerciseLibraryId: te.exerciseLibraryId,
-            exerciseName: te.exerciseName,
-            muscleGroups: te.muscleGroups as string[],
-            sets: Array.from({ length: te.defaultSets }, () => ({
-              id: uuidv4(),
-              weight: te.defaultWeight?.toString() || '',
-              reps: te.defaultReps?.toString() || '',
-              rpe: '',
-              isWarmup: false,
-              completed: false,
-            })),
-          }));
-          setExercises(templateExercises);
-        }
-        navigation.setParams({ templateId: undefined } as any);
+  const discardDraft = () => Alert.alert('Discard workout draft?', 'This will remove the exercises, sets, and notes in this unfinished workout.', [
+    { text: 'Keep draft', style: 'cancel' },
+    { text: 'Discard', style: 'destructive', onPress: async () => {
+      if (savingRef.current || finished.current) return;
+      savingRef.current = true;
+      setSaving(true);
+      try {
+        await clearWorkoutDraft();
+        finished.current = true;
+        navigation.goBack();
+      } catch {
+        Alert.alert('Could not discard draft', 'Your workout has been kept. Please try again.');
+        savingRef.current = false;
+        setSaving(false);
       }
-    };
-    loadTemplate();
-  }, []);
+    } },
+  ]);
 
   const saveAsTemplate = () => {
     if (exercises.length === 0) {
@@ -272,8 +337,11 @@ const LogWorkoutScreen: React.FC = () => {
   };
 
   const performSave = async () => {
+    if (savingRef.current || finished.current) return;
+    savingRef.current = true;
     setSaving(true);
     try {
+      await persist(draftRef.current);
       const exercisesToSave: Omit<Exercise, 'id' | 'workoutId'>[] = exercises.map(
         (e, index) => ({
           exerciseLibraryId: e.exerciseLibraryId,
@@ -286,7 +354,7 @@ const LogWorkoutScreen: React.FC = () => {
               id: uuidv4(),
               exerciseId: '',
               setNumber: setIndex + 1,
-              weight: parseFloat(s.weight) || 0,
+              weight: (parseFloat(s.weight) || 0) * (draft.weightUnit === settings.weightUnit ? 1 : draft.weightUnit === 'lbs' ? 0.45359237 : 1 / 0.45359237),
               reps: parseInt(s.reps) || 0,
               rpe: s.rpe ? parseInt(s.rpe) : undefined,
               isWarmup: s.isWarmup,
@@ -296,23 +364,47 @@ const LogWorkoutScreen: React.FC = () => {
       );
 
       await createWorkout(exercisesToSave, notes || undefined);
-
+      finished.current = true;
+      await clearWorkoutDraft();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       navigation.goBack();
     } catch (error) {
       console.error('Failed to save workout:', error);
-      Alert.alert('Error', 'Failed to save workout. Please try again.');
+      if (finished.current) {
+        Alert.alert('Workout saved', 'Your workout was saved, but the draft could not be cleared. You can discard the draft when you reopen it.');
+        navigation.goBack();
+      } else Alert.alert('Error', 'Failed to save workout. Your draft has been kept. Please try again.');
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   };
+
+  if (!ready) return <View style={styles.loading}>
+    {loadError ? <>
+      <Text style={styles.emptyText}>Could not restore your workout draft</Text>
+      <Button title="Try again" onPress={() => { setLoadError(false); setLoadAttempt((value) => value + 1); }} />
+    </> : <ActivityIndicator color={colors.primary} />}
+  </View>;
 
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView ref={scrollView} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled"
+        onContentSizeChange={() => {
+          if (scrollToAddedExercise.current) {
+            scrollToAddedExercise.current = false;
+            scrollView.current?.scrollToEnd({ animated: true });
+          }
+        }}>
+        {exercises.length > 0 && <View style={styles.draftNotice}>
+          <TouchableOpacity disabled={saving} onPress={() => { void persist(draftRef.current).catch(() => undefined); }} style={{ flex: 1 }}>
+            <Text style={styles.draftText}>{draftStatus === 'error' ? 'Draft not saved — tap to retry' : draftStatus === 'saving' ? 'Saving draft…' : 'Draft saved · Reopen to continue'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity disabled={saving} onPress={discardDraft}><Text style={styles.discardText}>Discard</Text></TouchableOpacity>
+        </View>}
         {/* Rest Timer */}
         {restTimer > 0 && (
           <Card variant="elevated" style={styles.timerCard}>
@@ -355,6 +447,7 @@ const LogWorkoutScreen: React.FC = () => {
           variant="outline"
           icon={<Ionicons name="add" size={20} color={colors.primary} />}
           style={styles.addExerciseButton}
+          disabled={saving}
         />
 
         {/* Exercises List */}
@@ -371,7 +464,7 @@ const LogWorkoutScreen: React.FC = () => {
             <View style={styles.setsHeader}>
               <Text style={[styles.setHeaderText, styles.setCol]}>Set</Text>
               <Text style={[styles.setHeaderText, styles.weightCol]}>
-                {settings.weightUnit}
+                {draft.weightUnit}
               </Text>
               <Text style={[styles.setHeaderText, styles.repsCol]}>Reps</Text>
               <Text style={[styles.setHeaderText, styles.rpeCol]}>RPE</Text>
@@ -390,6 +483,7 @@ const LogWorkoutScreen: React.FC = () => {
                 <TextInput
                   style={[styles.setInput, styles.weightCol]}
                   value={set.weight}
+                  editable={!saving}
                   onChangeText={(v) => updateSet(exercise.id, set.id, 'weight', v)}
                   keyboardType="decimal-pad"
                   placeholder="0"
@@ -398,6 +492,7 @@ const LogWorkoutScreen: React.FC = () => {
                 <TextInput
                   style={[styles.setInput, styles.repsCol]}
                   value={set.reps}
+                  editable={!saving}
                   onChangeText={(v) => updateSet(exercise.id, set.id, 'reps', v)}
                   keyboardType="number-pad"
                   placeholder="0"
@@ -406,6 +501,7 @@ const LogWorkoutScreen: React.FC = () => {
                 <TextInput
                   style={[styles.setInput, styles.rpeCol]}
                   value={set.rpe}
+                  editable={!saving}
                   onChangeText={(v) => updateSet(exercise.id, set.id, 'rpe', v)}
                   keyboardType="number-pad"
                   placeholder="-"
@@ -453,6 +549,7 @@ const LogWorkoutScreen: React.FC = () => {
             <TextInput
               style={styles.notesInput}
               value={notes}
+              editable={!saving}
               onChangeText={setNotes}
               placeholder="How did the workout feel? Any form cues?"
               placeholderTextColor={colors.textDisabled}
@@ -476,11 +573,22 @@ const LogWorkoutScreen: React.FC = () => {
 
       {/* Footer Buttons */}
       {exercises.length > 0 && (
-        <View style={styles.footer}>
-          <TouchableOpacity style={styles.saveTemplateButton} onPress={saveAsTemplate}>
-            <Ionicons name="bookmark-outline" size={20} color={colors.primary} />
-            <Text style={styles.saveTemplateText}>Save as Template</Text>
-          </TouchableOpacity>
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
+          <View style={styles.footerActions}>
+            <Button
+              title="Add Exercise"
+              onPress={() => navigation.navigate('ExerciseSearch', {})}
+              disabled={saving}
+              variant="outline"
+              size="small"
+              style={{ flex: 1 }}
+              icon={<Ionicons name="add" size={20} color={colors.primary} />}
+            />
+            <TouchableOpacity disabled={saving} style={styles.saveTemplateButton} onPress={saveAsTemplate}>
+              <Ionicons name="bookmark-outline" size={20} color={colors.primary} />
+              <Text style={styles.saveTemplateText}>Save as Template</Text>
+            </TouchableOpacity>
+          </View>
           <Button
             title="Save Workout"
             onPress={saveWorkout}
@@ -494,13 +602,18 @@ const LogWorkoutScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  loading: { flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', gap: spacing.md },
+  draftNotice: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.md },
+  draftText: { color: colors.textSecondary, fontSize: fontSize.xs },
+  discardText: { color: colors.primary, fontSize: fontSize.xs, paddingVertical: spacing.sm },
+  footerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
   container: {
     flex: 1,
     backgroundColor: colors.background,
   },
   content: {
     padding: spacing.md,
-    paddingBottom: 100,
+    paddingBottom: spacing.lg,
   },
   timerCard: {
     alignItems: 'center',
@@ -648,22 +761,18 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     padding: spacing.md,
     backgroundColor: colors.surface,
     borderTopWidth: 1,
     borderColor: colors.border,
   },
   saveTemplateButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.xs,
     paddingVertical: spacing.sm,
-    marginBottom: spacing.sm,
   },
   saveTemplateText: {
     fontSize: fontSize.sm,

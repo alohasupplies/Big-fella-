@@ -96,6 +96,26 @@ export const updateRecordedRunDetails = async (
   return (await getRunById(runId)) as Run;
 };
 
+export const correctRun = async (runId: string, distance: number, duration: number, route?: RoutePoint[]): Promise<Run> => {
+  if (!Number.isFinite(distance) || distance <= 0 || !Number.isFinite(duration) || duration < 5) throw new Error('Enter a positive distance and at least 5 seconds.');
+  const original = await getRunById(runId);
+  if (!original) throw new Error('Run not found.');
+  const backup = JSON.stringify({ distance: original.distance, duration: original.duration, pace: original.pace, routeCoordinates: original.routeCoordinates || null });
+  await runQuery(`UPDATE runs SET distance = ?, duration = ?, pace = ?, routeCoordinates = ?,
+    originalRunData = COALESCE(originalRunData, ?), updatedAt = ? WHERE id = ?`,
+    [distance, duration, duration / 60 / distance, route ? JSON.stringify(route) : original.routeCoordinates || null, backup, new Date().toISOString(), runId]);
+  return (await getRunById(runId)) as Run;
+};
+
+export const undoRunCorrections = async (runId: string): Promise<Run> => {
+  const run = await getRunById(runId);
+  if (!run?.originalRunData) throw new Error('No original recording available.');
+  const original = JSON.parse(run.originalRunData);
+  await runQuery('UPDATE runs SET distance = ?, duration = ?, pace = ?, routeCoordinates = ?, originalRunData = NULL, updatedAt = ? WHERE id = ?',
+    [original.distance, original.duration, original.pace, original.routeCoordinates, new Date().toISOString(), runId]);
+  return (await getRunById(runId)) as Run;
+};
+
 // Get run by ID
 export const getRunById = async (runId: string): Promise<Run | null> => {
   return getFirst<Run>('SELECT * FROM runs WHERE id = ?', [runId]);

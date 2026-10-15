@@ -40,8 +40,13 @@ const writeActiveRun = (session: ActiveRunSession) =>
   FileSystem.writeAsStringAsync(SESSION_FILE, JSON.stringify(session));
 
 const updateLiveActivity = (session: ActiveRunSession) => {
-  if (session.mode === 'indoor') return;
   liveActivity?.update?.(elapsedForSession(session), session.points, session.status === 'paused');
+};
+
+const restoreLiveActivity = (session: ActiveRunSession) => {
+  const args = [session.startedAt, session.distanceUnit || 'miles', elapsedForSession(session), session.points, session.status === 'paused'] as const;
+  if (liveActivity?.restoreSession) liveActivity.restoreSession(...args, session.mode || 'outdoor');
+  else if (session.mode !== 'indoor') liveActivity?.restore?.(...args);
 };
 
 const locationTaskHandler: TaskManager.TaskManagerTaskExecutor = async ({ data, error }) => {
@@ -56,6 +61,7 @@ const locationTaskHandler: TaskManager.TaskManagerTaskExecutor = async ({ data, 
     longitude: coords.longitude,
     altitude: coords.altitude,
     timestamp,
+    elapsedSeconds: session.elapsedBeforeSegment + Math.max(0, Math.floor((timestamp - (session.segmentStartedAt || timestamp)) / 1000)),
   })));
   session.updatedAt = Date.now();
   await writeActiveRun(session);
@@ -97,7 +103,7 @@ export const requestRunLocationPermission = async () => {
 
 export const beginActiveRun = async (distanceUnit: 'miles' | 'km', mode: 'outdoor' | 'indoor' = 'outdoor'): Promise<ActiveRunSession> => {
   const existing = await readActiveRun();
-  if (existing) return existing;
+  if (existing) { restoreLiveActivity(existing); return existing; }
   const now = Date.now();
   const session: ActiveRunSession = {
     id: `${now}`,
@@ -113,8 +119,9 @@ export const beginActiveRun = async (distanceUnit: 'miles' | 'km', mode: 'outdoo
   await writeActiveRun(session);
   if (mode === 'outdoor') {
     await startLocationTask();
-    liveActivity?.start?.(now, distanceUnit);
   }
+  if (liveActivity?.startSession) liveActivity.startSession(now, distanceUnit, mode);
+  else if (mode === 'outdoor') liveActivity?.start?.(now, distanceUnit);
   return session;
 };
 
@@ -155,8 +162,7 @@ export const reconcileRunTracking = async () => {
     liveActivity?.end?.();
     return null;
   }
-  if (session.mode === 'indoor') return session;
-  if (session.status === 'recording') await startLocationTask();
-  liveActivity?.restore?.(session.startedAt, session.distanceUnit || 'miles', elapsedForSession(session), session.points, session.status === 'paused');
+  if (session.mode !== 'indoor' && session.status === 'recording') await startLocationTask();
+  restoreLiveActivity(session);
   return session;
 };
